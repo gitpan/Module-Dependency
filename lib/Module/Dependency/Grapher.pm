@@ -7,7 +7,7 @@ use vars qw/$VERSION @TIERS %LOOKUP %COLOURS
 $nOffset $eOffset $sOffset $wOffset
 /;
 
-($VERSION) = ('$Revision: 1.16 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 1.18 $' =~ /([\d\.]+)/ );
 
 %COLOURS = (
 	type => [0,0,0],
@@ -91,7 +91,36 @@ sub makeHtml {
 		print( HTML qq(<tr><td class="$rowclasses{$type}">$notes{$type}</td><td class="$rowclasses{$type}">), join(', ', sort { $a cmp $b } @{$TIERS[$_]}), "</td></tr>\n" );
 	}
 	print HTML "</table>\n</div>\n";
+
+	# create the imagemap
+	my $rv = 1;
+	if ( $options->{ImageMap} ) {
+		_imageDimsSet();
+		if ($maxitems < 8) {
+			$rowHeight = 8*$rowHeight*1.5 / $maxitems;
+		} elsif ($maxitems < 16) {
+			$rowHeight = 16*$rowHeight / $maxitems;
+		}
+		_packObjects( $rowHeight * $maxitems );
+		my $str = qq(<map name="dependence">\n);
+		while (my ($k, $v) = each(%LOOKUP)) {
+			my $alt = "Root the dependency tree on '$v->{package}'";
+			$str .= qq(<!-- PACK $v->{package} --><area href="" shape="rect" coords=")
+			. int($v->{'x'} -3) . ',' . int($v->{'y'} -1) . ',' . int($v->{'x2'} +3) . ',' . int($v->{'y'} +9)
+			. qq(" alt="$alt" title="$alt" />\n);
+		}
+		$str .= qq(</map>\n);
+				
+		if (lc($options->{ImageMap}) eq 'print') {
+			print HTML $str;
+		} else {
+			$rv = $str;
+		}
+	}
+
 	close HTML;
+
+	return $rv;
 }
 
 sub makeImage {
@@ -513,9 +542,10 @@ can apply CSS to it. Typical fragment is:
 	</table>
 	</div>
 
-Parameters are as for makeImage()
+Parameters are as for makeImage(). 
 
-See below for options. See README.EXAMPLES too.
+See below for options - especially the ImageMap option, which allows this method to return an HTML client-side
+imagemap. See README.EXAMPLES too.
 
 =back
 
@@ -567,6 +597,22 @@ Used by makePs() only - if 1 it makes a colour image, if 0 it makes a greyscale 
 
 sed by makePs() only. Set the font used in the drawing. Default is 'Helvetica'.
 
+=item ImageMap
+
+Used by makeHtml() only - if set to 'print' it will print a skeleton imagemap to the output file of this form:
+
+	<map name="dependence">
+	<!-- PACK a --><area href="" shape="rect" coords="217,110,229,122" alt="Root dependency tree on a" title="Root dependency tree on a">
+	<!-- PACK x.pl --><area href="" shape="rect" coords="17,110,44,122" alt="Root dependency tree on x.pl" title="Root dependency tree on x.pl">
+	</map>
+
+Note that the href attributes are deliberately left empty so you need to go through the map and insert the right URL. The PACK comment
+at the start of each line is provided to tell you what the package or scriptname is. The imagemap corresponds to the image that _would_
+be produced by makeImage() if it were given the same arguments.
+
+If set to 'return' then makeHtml() will return this same imagemap string to the caller so that they can process it further. See the
+bundled 'cgidepend.plx' CGI program to see a use for this imagemap.
+
 =back
 
 =head1 PREREQUISITES
@@ -581,6 +627,6 @@ Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Grapher.pm,v 1.16 2002/04/28 23:28:55 piers Exp $
+$Id: Grapher.pm,v 1.18 2002/05/19 19:09:40 piers Exp $
 
 =cut

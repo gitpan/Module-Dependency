@@ -5,7 +5,7 @@ use File::Spec;
 use Storable qw/nstore/;
 use vars qw/$VERSION $UNIFIED @NOINDEX $unified_file $check_shebang/;
 
-($VERSION) = ('$Revision: 1.10 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 1.11 $' =~ /([\d\.]+)/ );
 @NOINDEX = qw(.AppleDouble /test /CVS/);
 $check_shebang = 1;
 
@@ -353,8 +353,6 @@ Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Indexer.pm,v 1.10 2002/04/01 12:49:01 piers Exp $
+$Id: Indexer.pm,v 1.11 2002/05/19 19:11:19 piers Exp $
 
 =cut
-
-

@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: cgidepend.plx,v 1.6 2002/04/28 23:28:48 piers Exp $
+# $Id: cgidepend.plx,v 1.8 2002/05/19 19:29:31 piers Exp $
 
 ### YOU MAY NEED TO EDIT THE SHEBANG LINE!
 
@@ -20,13 +20,16 @@ use constant STYLESHEET_LOC => '/depend.css';
 ### EDIT THIS OPTIONALLY - this value will be prepended to the incoming 'datafile' parameter, allowing you to restrict it to a single directory
 use constant DATADIR => '';
 
+### EDIT THIS OPTIONALLY - if true then we'll print a clientside imagemap. if false, no imagemap
+use constant DOES_IMAGEMAP => 1;
+
 use CGI;
 use Module::Dependency::Info;
 use Module::Dependency::Grapher;
 
 use vars qw/$VERSION $cgi/;
 
-($VERSION) = ('$Revision: 1.6 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 1.8 $' =~ /([\d\.]+)/ );
 $cgi = new CGI;
 
 eval {
@@ -96,12 +99,19 @@ eval {
 		}
 		
 		my $scripturl = $ENV{SCRIPT_URL} || $ENV{SCRIPT_NAME};
-		print qq(<h1>Dependency Information for $seed</h1><hr />\n<h2>Plot of relationships</h2>
-<img src="$scripturl?go=1&embed=1&seed=$seed&kind=$kind&format=$format&datafile=$datafile&allscripts=$allscripts&re=$re&xre=$xre" alt="Dependency tree">
+		my $cgi_this_time = "$scripturl?go=1&amp;kind=$kind&amp;format=$format&amp;datafile=$datafile&amp;allscripts=$allscripts&amp;re=$re&amp;xre=$xre";
+		print qq(<h1>Dependency Information for $seed</h1><hr />
+<h2>Plot of relationships</h2>
+<img src="$cgi_this_time&amp;seed=$seed&amp;embed=1" alt="Dependency tree image (client-side imagemap)" ) . ( DOES_IMAGEMAP ? 'usemap="#dependence" ' : '' ) . q(/>
 );
 		
-		Module::Dependency::Grapher::makeHtml( $kind, \@objlist, '-', {Title => $title, NoVersion => 1, NoLegend => 1, IncludeRegex => $re, ExcludeRegex => $xre});
-		
+		# $rv contains the imagemap for this run; the regexp simply inserts the right URL
+		my $rv = Module::Dependency::Grapher::makeHtml( $kind, \@objlist, '-', {Title => $title, NoVersion => 1, NoLegend => 1, IncludeRegex => $re, ExcludeRegex => $xre, ImageMap => 'return'});
+		if (DOES_IMAGEMAP) {
+			$rv =~ s/<!-- PACK (\S+) --><area href=""/<!-- PACK $1 --><area href="$cgi_this_time&amp;seed=$1"/g;
+			print $rv;
+		}
+
 		unless ( $allscripts ) {
 			foreach ( @objlist ) {
 				print "\n<hr />\n";
@@ -216,9 +226,16 @@ the page, and the other returns a PNG (or GIF) that the page embeds.
 The HTML mode basically gives you all the dependency info for the item, and the image shows
 it to you in an easy to understand way.
 
+=head1 NOTE
+
+This program build a client-side imagemap which allows you to click on an item in the image and make that the
+root of the dependency tree. If a robot, spider or similar web-crawling program finds your CGI it may decide to follow
+all the links it can find, including those in the imagemap. Personally I don't find this a problem, but it's
+just something to be aware of. You can disable the imagemap by setting the DOES_IMAGEMAP constant to zero.
+
 =head1 VERSION
 
-$Id: cgidepend.plx,v 1.6 2002/04/28 23:28:48 piers Exp $
+$Id: cgidepend.plx,v 1.8 2002/05/19 19:29:31 piers Exp $
 
 =cut
 

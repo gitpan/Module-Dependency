@@ -103,9 +103,11 @@ DESCRIPTION
                 </table>
                 </div>
 
-        Parameters are as for makeImage()
+        Parameters are as for makeImage().
 
-        See below for options. See README.EXAMPLES too.
+        See below for options - especially the ImageMap option, which allows
+        this method to return an HTML client-side imagemap. See
+        README.EXAMPLES too.
 
   OPTIONS
 
@@ -153,6 +155,26 @@ DESCRIPTION
         sed by makePs() only. Set the font used in the drawing. Default is
         'Helvetica'.
 
+    ImageMap
+        Used by makeHtml() only - if set to 'print' it will print a skeleton
+        imagemap to the output file of this form:
+
+                <map name="dependence">
+                <!-- PACK a --><area href="" shape="rect" coords="217,110,229,122" alt="Root dependency tree on a" title="Root dependency tree on a">
+                <!-- PACK x.pl --><area href="" shape="rect" coords="17,110,44,122" alt="Root dependency tree on x.pl" title="Root dependency tree on x.pl">
+                </map>
+
+        Note that the href attributes are deliberately left empty so you
+        need to go through the map and insert the right URL. The PACK
+        comment at the start of each line is provided to tell you what the
+        package or scriptname is. The imagemap corresponds to the image that
+        _would_ be produced by makeImage() if it were given the same
+        arguments.
+
+        If set to 'return' then makeHtml() will return this same imagemap
+        string to the caller so that they can process it further. See the
+        bundled 'cgidepend.plx' CGI program to see a use for this imagemap.
+
 PREREQUISITES
     If you want to use the makePs() method you'll need PostScript::Simple
     installed. If you want to use the makeImage() method you'll need GD
@@ -163,7 +185,7 @@ SEE ALSO
     Module::Dependency and the README files.
 
 VERSION
-    $Id: README.MODULES,v 1.7 2002/04/28 23:33:30 piers Exp $
+    $Id: README.MODULES,v 1.8 2002/05/19 19:12:43 piers Exp $
 
 NAME
     Module::Dependency::Indexer - creates the databases used by the
@@ -276,7 +298,7 @@ SEE ALSO
     Module::Dependency and the README files.
 
 VERSION
-    $Id: README.MODULES,v 1.7 2002/04/28 23:33:30 piers Exp $
+    $Id: README.MODULES,v 1.8 2002/05/19 19:12:43 piers Exp $
 
 NAME
     Module::Dependency::Info - retrieve dependency information for scripts
@@ -442,5 +464,5 @@ SEE ALSO
     Module::Dependency and the README files.
 
 VERSION
-    $Id: README.MODULES,v 1.7 2002/04/28 23:33:30 piers Exp $
+    $Id: README.MODULES,v 1.8 2002/05/19 19:12:43 piers Exp $
 
