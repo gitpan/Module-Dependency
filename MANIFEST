@@ -1,3 +1,4 @@
+CHANGES
 INSTALL
 LICENSE
 MANIFEST
@@ -6,6 +7,7 @@ README
 README.COMMANDS
 README.MODULES
 README.EXAMPLES
+lib/Module/Dependency.pod
 lib/Module/Dependency/Grapher.pm
 lib/Module/Dependency/Indexer.pm
 lib/Module/Dependency/Info.pm
@@ -41,3 +43,4 @@ t/u/g.pm
 t/u/h.pm
 t/u/x.pl
 t/u/y.pl
+t/u/z.cgi

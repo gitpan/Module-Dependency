@@ -62,14 +62,17 @@ SYNOPSIS
     go  Must be true - used to ensure we have been called correctly
 
     embed
-        If true, returns an image, else returns the HTML.
+        If 1, returns an image, if 0 returns the HTML, if 2 returns the HTML
+        with no header/footer, suitable for including in another web page.
 
     format
         Optionally, specifically ask for one kind of image format (default
-        is 'PNG', but may be 'GIF' if your GD allows that)
+        is 'PNG', but may be 'GIF' or whatever your GD allows)
 
     datafile
-        Optionally sets the data file location.
+        Optionally sets the data file location. The constant DATADIR
+        (default is '') is prepended to this to restrict the files that can
+        be used.
 
     seed
         Which item to start with, or...
@@ -80,6 +83,10 @@ SYNOPSIS
     kind
         Which dependencies to plot - may be 'both' (the default) 'parent' or
         'child'.
+
+    re  A regular expression - only show items matching this regex.
+
+    xre A regular expression - do not show items matching this regex.
 
 DESCRIPTION
     The original thought that created the Module::Dependency software came
@@ -96,13 +103,13 @@ DESCRIPTION
     and the image shows it to you in an easy to understand way.
 
 VERSION
-    $Id: README.COMMANDS,v 1.5 2002/01/25 00:46:29 piers Exp $
+    $Id: README.COMMANDS,v 1.7 2002/04/28 23:33:30 piers Exp $
 
 NAME
     dumper - print basic Module::Dependency info
 
 SYNOPSIS
-            dumper.plx [-h] [-t] [-o <datafile>] [-a] [-s] [-l] [ {-f|-p|-c|-i} <script/module>]
+            dumper.plx [-h] [-t] [-o <datafile>] [-a] [-s] [-l] [ {-f|-p|-c|-i} <script/module>] [ -r item1 item2 ]
 
             -h Displays this help
             -t Displays tracing messages
@@ -115,6 +122,7 @@ SYNOPSIS
             -p Get list of items that immediately depend on script/module (i.e. parents)
             -c Get list of items that script/module immediately depends on (i.e. children)
             -i Dump the record for the script/module
+            -r State the relationship, if any, between item1 and item2 - both may be scripts or modules.
 
 EXAMPLE
             dumper.plx -o ./unified.dat -i Module::Dependency::Info
@@ -133,13 +141,16 @@ DESCRIPTION
     Data::Dumper.
 
 VERSION
-    $Id: README.COMMANDS,v 1.5 2002/01/25 00:46:29 piers Exp $
+    $Id: README.COMMANDS,v 1.7 2002/04/28 23:33:30 piers Exp $
 
 NAME
     grapher - display Module::Dependency info in a graphical manner
 
 SYNOPSIS
-            grapher.plx [-h] [-t] [-f FORMAT] [-o <datafile>] [-s START_AT [-r] [-b]] <filename>
+            grapher.plx [-h] [-t]
+                    [-f FORMAT] [-o <datafile>]
+                    [-m REGEX] [-n REGEX] [-s START_AT [-r] [-b]]
+                    <filename>
 
             -h Displays this help
             -t Displays tracing messages
@@ -150,6 +161,8 @@ SYNOPSIS
                'ps'/'eps' - Output (Encapsulated) PostScript (requires PostScript::Simple)
             -o the location of the datafile (default is 
                /var/tmp/dependence/unified.dat)
+            -m Optional regular expression - only show dependencies that match this expression
+            -n Optional regular expression - do not show dependencies that match this expression
             -s Starts the dependency tree at this script/module
                Default is to start with ALL scripts
                Can be like 'foo,bar' to start with a list of items.
@@ -172,7 +185,7 @@ DESCRIPTION
     directions if required to give parent and/or child relationships.
 
 VERSION
-    $Id: README.COMMANDS,v 1.5 2002/01/25 00:46:29 piers Exp $
+    $Id: README.COMMANDS,v 1.7 2002/04/28 23:33:30 piers Exp $
 
 NAME
     indexer - make Module::Dependency index
@@ -202,5 +215,5 @@ DESCRIPTION
     using the -o option.
 
 VERSION
-    $Id: README.COMMANDS,v 1.5 2002/01/25 00:46:29 piers Exp $
+    $Id: README.COMMANDS,v 1.7 2002/04/28 23:33:30 piers Exp $
 

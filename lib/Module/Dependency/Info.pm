@@ -3,7 +3,7 @@ package Module::Dependency::Info;
 use Storable qw/retrieve/;
 use vars qw/$VERSION $UNIFIED $unified_file $LOADED/;
 
-($VERSION) = ('$Revision: 1.5 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 1.8 $' =~ /([\d\.]+)/ );
 $unified_file = '/var/tmp/dependence/unified.dat';
 
 sub setIndex {
@@ -66,6 +66,56 @@ sub dropIndex {
 	return 1;
 }
 
+sub relationship {
+	my ($itemName, $otherItem) = @_;
+	TRACE("relationship for $itemName / $otherItem");
+	my $obj = getItem( $itemName ) || return(undef);
+	
+	alarm 2; # paranoia about infinite loops
+	my ($isParent, $isChild) = ( _isParent($itemName, $otherItem, {}), _isChild($itemName, $otherItem, {}) );
+	alarm 0;
+	
+	my $rel;
+	if ($isParent && $isChild) { $rel = 'CIRCULAR'; }
+	elsif ($isParent) { $rel = 'PARENT'; }
+	elsif ($isChild) { $rel = 'CHILD'; }
+	else { $rel = 'NONE'; }
+	
+	return $rel;
+}
+
+### PRIVATE
+
+sub _isParent {
+	my ($itemName, $otherItem, $seen) = @_;
+	TRACE("_isParent for $itemName / $otherItem");
+	return 0 if $seen->{$itemName}++;
+	my $parents = getParents( $itemName );
+	foreach ( @$parents ) {
+		return 1 if ($_ eq $otherItem);
+	}
+	TRACE("...not directly, recursing");
+	foreach ( @$parents ) {
+		return 1 if _isParent($_, $otherItem, $seen);
+	}
+	return 0;
+}
+
+sub _isChild {
+	my ($itemName, $otherItem, $seen) = @_;
+	TRACE("_isChild for $itemName / $otherItem");
+	return 0 if $seen->{$itemName}++;
+	my $children = getChildren( $itemName );
+	foreach ( @$children ) {
+		return 1 if ($_ eq $otherItem);
+	}
+	TRACE("...not directly, recursing");
+	foreach ( @$children ) {
+		return 1 if _isChild($_, $otherItem, $seen);
+	}
+	return 0;
+}
+
 sub TRACE {}
 
 =head1 NAME
@@ -93,6 +143,8 @@ Module::Dependency::Info - retrieve dependency information for scripts and modul
 	$filename = Module::Dependecy::Info::getFilename( 'Foo::Bar' [, $forceReload ] );
 	$listref = Module::Dependecy::Info::getChildren( $node [, $forceReload ] );
 	$listref = Module::Dependecy::Info::getParents( $node [, $forceReload ] );
+	
+	$value = Module::Dependency::Info::relationship( 'Foo::Bar', 'strict' );
 	
 	Module::Dependecy::Info::dropIndex();
 
@@ -149,6 +201,22 @@ package/script named, or undef if no record could be found.
 
 Gets a list of all reverse dependencies, i.e. packages that depend upon this item, for 
 the package/script named, or undef if no record could be found.
+
+=item $value = Module::Dependency::Info::relationship( $itemName, $otherItem );
+
+Tells you whether, according to the current database, $itemName is related to $otherItem.
+$itemName is a module or script in the database (i.e. it's a file that has been indexed).
+Return values are:
+
+undef if $itemName is not in the database
+
+'NONE' if no link can be found (may be a false negative if links between the 2 items are not in the index)
+
+'PARENT' if the $otherItem depends upon $itemName
+
+'CHILD' if $itemName depends upon $otherItem
+
+'CIRCULAR' if $otherItem is both 'PARENT' and 'CHILD'.
 
 =item dropIndex
 
@@ -210,6 +278,14 @@ But of course you should use the accessor methods to get at the information.
 
 There is a TRACE stub function, and the module uses TRACE() to log activity. Override our 
 TRACE with your own routine, e.g. one that prints to STDERR, to see these messages.
+
+=head1 SEE ALSO
+
+Module::Dependency and the README files.
+
+=head1 VERSION
+
+$Id: Info.pm,v 1.8 2002/04/28 23:28:55 piers Exp $
 
 =cut
 

@@ -1,23 +1,25 @@
 package Module::Dependency::Indexer;
 
 use File::Find;
+use File::Spec;
 use Storable qw/nstore/;
-use vars qw/$VERSION $UNIFIED @NOINDEX $unified_file/;
+use vars qw/$VERSION $UNIFIED @NOINDEX $unified_file $check_shebang/;
 
-($VERSION) = ('$Revision: 1.8 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 1.10 $' =~ /([\d\.]+)/ );
 @NOINDEX = qw(.AppleDouble /test /CVS/);
+$check_shebang = 1;
 
 $unified_file = '/var/tmp/dependence/unified.dat';
 
 sub setIndex {
-	my $file = shift;
+	my $file = _makeAbsolute( shift );
 	TRACE("Trying to set index to <$file>");
 	return unless $file;
 	$unified_file = $file;
 }
 
 sub makeIndex {
-	my @dirs = @_;
+	my @dirs = map { _makeAbsolute( $_ ) } @_;
 	
 	TRACE( "Running search to build indexes" );
 	$UNIFIED = {};
@@ -27,7 +29,25 @@ sub makeIndex {
 	return 1;
 }
 
+sub setShebangCheck {
+	$check_shebang = shift;
+}
+
 ######### PRIVATE
+
+# if we get given relative pathnames then things stop working when File::Find changes working directory
+# the fix is now to ensure we use absolute paths internally.
+sub _makeAbsolute {
+	my $dir = $_[0];
+	if ( File::Spec->file_name_is_absolute( $dir ) ) {
+		TRACE("$dir is an absolute path");
+		return $dir;
+	} else {
+		my $abs = File::Spec->rel2abs( $dir );
+		TRACE("$dir is relative - changed to $abs");
+		return $abs
+	}
+}
 
 sub _storeIndex {
 	TRACE( "storing to disk" );
@@ -74,16 +94,27 @@ sub _wanted {
 	}
 	
 	TRACE("Indexing $fname");
+	my $is_perl_script = 0;
 	if (m/\.pm$/) {
 		my $moduleObj = _parseModule( $fname ) || return;
 		$UNIFIED->{'allobjects'}->{ $moduleObj->{'package'} } = $moduleObj;
 	} elsif (m/\.plx?$/) {
-		my $scriptObj = _parseScript( $fname ) || return;
-		push( @{$UNIFIED->{'scripts'}} , $scriptObj->{'package'} );
-		$UNIFIED->{'allobjects'}->{ $scriptObj->{'package'} } = $scriptObj;
+		$is_perl_script++;
+	} elsif ($check_shebang && -f $fname && open(F, "<$fname")) {
+		my ($first_line) = <F>;
+		close F;
+		if ($first_line =~ /^#!.*perl/) {
+			$is_perl_script++;
+		}
 	} else {
 		return;
 	}
+
+	if ($is_perl_script) {
+ 		my $scriptObj = _parseScript( $fname ) || return;
+ 		push( @{$UNIFIED->{'scripts'}} , $scriptObj->{'package'} );
+ 		$UNIFIED->{'allobjects'}->{ $scriptObj->{'package'} } = $scriptObj;
+ 	}
 }
 
 # Get data from a module file, returns a dependency unit object
@@ -102,7 +133,14 @@ sub _parseModule {
 	# go through the file and try to find out some things
 	local *FILE;
 	open(FILE, $file) or do { warn("Can't open file $file for read: $!"); return undef; };
+	
+	my $in_pod;
 	while(<FILE>) {
+		if ($in_pod) {
+			$in_pod = 0 if (/^=cut\s*$/);
+			next;
+		}
+
 		# get the package name
 		if (m/^\s*package\s+([\w\:]+)\s*;/ && $foundPackage == 0) {
 			$foundPackage = 1;
@@ -117,8 +155,27 @@ sub _parseModule {
 		if (m/^\s*require\s+([\w\:]+).*;/) {
 			push (@{$self->{'depends_on'}}, $1) unless ($seen{$1}++);
 		}
+		
+		# the 'base' pragma - SREZIC
+		if (m/^\s*use\s+base\s+(.*)/) {
+			require Safe;
+			my $safe = new Safe;
+			(my $list = $1) =~ s/\s+\#.*//;
+			$list =~ s/[\r\n]//;
+			while ($list !~ /;\s*$/ && ($_ = <FILE>)) {
+				s/\s+#.*//;
+				s/[\r\n]//;
+				$list .= $_;
+			}
+			$list =~ s/;\s*$//;
+			my(@mods) = $safe->reval($list);
+			foreach my $mod (@mods) {
+				push (@{$self->{'depends_on'}}, $mod) unless ($seen{$mod}++);
+			}
+		}
+
+		$in_pod = 1 if m/^=\w+/;
 		last if m/^__/;
-		last if m/^=\w+/;
 		last if m/^1;/;
 	}
 	close FILE;
@@ -134,8 +191,9 @@ sub _parseModule {
 sub _parseScript {
 	my $file = shift;
 	
-	my $node = $file;
-	$node =~ s|^.*/||;
+	my $node;
+	(undef, undef, $node) = File::Spec->splitpath( $file );
+	TRACE("Filename $node found from $file");
 	
 	my $self = {
 		'filename' => $file,
@@ -149,7 +207,14 @@ sub _parseScript {
 	# go through the file and try to find out some things
 	local *FILE;
 	open(FILE, $file) or do { warn("Can't open file $file for read: $!"); return undef; };
+
+	my $in_pod;
 	while(<FILE>) {
+		if ($in_pod) {
+			$in_pod = 0 if (/^=cut\s*$/);
+			next;
+		}
+
 		# get the dependencies
 		if (m/\s*use\s+([\w\:]+).*;/) {
 			push (@{$self->{'depends_on'}}, $1) unless ($seen{$1}++);
@@ -158,8 +223,9 @@ sub _parseScript {
 		if (m/\s*require\s+([\w\:]+).*;/) {
 			push (@{$self->{'depends_on'}}, $1) unless ($seen{$1}++);
 		}
+
+		$in_pod = 1 if m/^=\w+/;
 		last if m/^__/;
-		last if m/^=\w+/;
 	}
 	close FILE;
 	
@@ -180,11 +246,14 @@ Module::Dependency::Indexer - creates the databases used by the dependency mappi
 	use Module::Dependency::Indexer;
 	Module::Dependency::Indexer::setIndex( '/var/tmp/dependency/unified.dat' );
 	Module::Dependency::Indexer::makeIndex( $directory, [ $another, $andanother... ] );
+	Module::Dependency::Indexer::setShebangCheck( 0 );
 
 =head1 DESCRIPTION
 
 This module looks at all .pm, .pl and .plx files within and below a given directory/directories 
-(found with File::Find), reads through them and extracts some information about them:
+(found with File::Find), reads through them and extracts some information about them.
+If the shebang check is turned on then it also looks at the first line of all
+other files, to see if they're perl programs too. We extract this information:
 
 =over 4
 
@@ -225,11 +294,16 @@ for datafiles independently of this module.
 
 Default is /var/tmp/dependence/unified.dat
 
-=item makeIndex( $directory, [ $another, $andanother... ] );
+=item makeIndex( $directory, [ $another, $andanother... ] )
 
 Builds, and stores to the current data file, a SINGLE database for all the files found under 
 all of the supplied directories. To create multiple indexes, run this method many times with a setIndex 
 inbetween each so that you don't clobber the previous run's datafile.
+
+=item setShebangCheck( BOOLEAN )
+
+Turns on or off the checking of #! lines for all files that are not .pl, .plx or .pm filenames.
+By default we do check the #! lines.
 
 =back
 
@@ -272,6 +346,14 @@ location. Other applications just use that file.
 
 There is a TRACE stub function, and the module uses TRACE() to log activity. Override our TRACE with your own routine, e.g.
 one that prints to STDERR, to see these messages.
+
+=head1 SEE ALSO
+
+Module::Dependency and the README files.
+
+=head1 VERSION
+
+$Id: Indexer.pm,v 1.10 2002/04/01 12:49:01 piers Exp $
 
 =cut
 

@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# $Id: grapher.plx,v 1.9 2002/01/21 15:41:17 piers Exp $
+# $Id: grapher.plx,v 1.10 2002/02/28 03:25:59 piers Exp $
 
 use strict;
 use lib './lib';
@@ -15,16 +15,16 @@ use Data::Dumper;
 use constant DEFAULT_FORMAT => 'PNG';
 
 use vars qw/$VERSION $IMGFILE
-$opt_h $opt_t $opt_o $opt_s $opt_r $opt_b $opt_f
+$opt_h $opt_t $opt_o $opt_s $opt_r $opt_b $opt_f $opt_m $opt_n
 $kind
 /;
 
 *Module::Dependency::Grapher::TRACE = \*TRACE;
 
-getopts('hto:s:rbf:');
+getopts('hto:m:n:s:rbf:');
 if ($opt_h) { usage(); }
 
-($VERSION) = ('$Revision: 1.9 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 1.10 $' =~ /([\d\.]+)/ );
 $IMGFILE = shift || usage();
 
 Module::Dependency::Grapher::setIndex( $opt_o ) if $opt_o;
@@ -84,15 +84,15 @@ if ($opt_f) {
 TRACE( "Format deduced to be $format" );
 
 if ( $format eq 'TEXT' ) {
-	Module::Dependency::Grapher::makeText( $kind, $objlist, $IMGFILE, {Title => $title});
+	Module::Dependency::Grapher::makeText( $kind, $objlist, $IMGFILE, {Title => $title, IncludeRegex => $opt_m, ExcludeRegex => $opt_n});
 } elsif ( $format eq 'HTML' ) {
-	Module::Dependency::Grapher::makeHtml( $kind, $objlist, $IMGFILE, {Title => $title});
+	Module::Dependency::Grapher::makeHtml( $kind, $objlist, $IMGFILE, {Title => $title, IncludeRegex => $opt_m, ExcludeRegex => $opt_n});
 } elsif ( $format eq 'PS' ) {
-	Module::Dependency::Grapher::makePs( $kind, $objlist, $IMGFILE, {Title => $title, Format => 'PS'});
+	Module::Dependency::Grapher::makePs( $kind, $objlist, $IMGFILE, {Title => $title, Format => 'PS', IncludeRegex => $opt_m, ExcludeRegex => $opt_n});
 } elsif ( $format eq 'EPS' ) {
-	Module::Dependency::Grapher::makePs( $kind, $objlist, $IMGFILE, {Title => $title});
+	Module::Dependency::Grapher::makePs( $kind, $objlist, $IMGFILE, {Title => $title, IncludeRegex => $opt_m, ExcludeRegex => $opt_n});
 } else {
-	Module::Dependency::Grapher::makeImage( $kind, $objlist, $IMGFILE, {Title => $title, Format => $format} );
+	Module::Dependency::Grapher::makeImage( $kind, $objlist, $IMGFILE, {Title => $title, Format => $format, IncludeRegex => $opt_m, ExcludeRegex => $opt_n} );
 }
 
 TRACE( "Done!" );
@@ -124,7 +124,10 @@ grapher - display Module::Dependency info in a graphical manner
 
 =head1 SYNOPSIS
 
-	grapher.plx [-h] [-t] [-f FORMAT] [-o <datafile>] [-s START_AT [-r] [-b]] <filename>
+	grapher.plx [-h] [-t]
+		[-f FORMAT] [-o <datafile>]
+		[-m REGEX] [-n REGEX] [-s START_AT [-r] [-b]]
+		<filename>
 
 	-h Displays this help
 	-t Displays tracing messages
@@ -135,6 +138,8 @@ grapher - display Module::Dependency info in a graphical manner
 	   'ps'/'eps' - Output (Encapsulated) PostScript (requires PostScript::Simple)
 	-o the location of the datafile (default is 
 	   /var/tmp/dependence/unified.dat)
+	-m Optional regular expression - only show dependencies that match this expression
+	-n Optional regular expression - do not show dependencies that match this expression
 	-s Starts the dependency tree at this script/module
 	   Default is to start with ALL scripts
 	   Can be like 'foo,bar' to start with a list of items.
@@ -160,7 +165,7 @@ to give parent and/or child relationships.
 
 =head1 VERSION
 
-$Id: grapher.plx,v 1.9 2002/01/21 15:41:17 piers Exp $
+$Id: grapher.plx,v 1.10 2002/02/28 03:25:59 piers Exp $
 
 =cut
 

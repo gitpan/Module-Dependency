@@ -1,5 +1,5 @@
-#!/usr/bin/perl5.00503
-# $Id: cgidepend.plx,v 1.4 2002/01/21 23:29:44 piers Exp $
+#!/usr/bin/perl
+# $Id: cgidepend.plx,v 1.6 2002/04/28 23:28:48 piers Exp $
 
 ### YOU MAY NEED TO EDIT THE SHEBANG LINE!
 
@@ -17,19 +17,22 @@ use constant DEFAULT_FORMAT => 'PNG';
 ### EDIT THIS - set it to the URL of the stylesheet you want to use
 use constant STYLESHEET_LOC => '/depend.css';
 
+### EDIT THIS OPTIONALLY - this value will be prepended to the incoming 'datafile' parameter, allowing you to restrict it to a single directory
+use constant DATADIR => '';
+
 use CGI;
 use Module::Dependency::Info;
 use Module::Dependency::Grapher;
 
 use vars qw/$VERSION $cgi/;
 
-($VERSION) = ('$Revision: 1.4 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 1.6 $' =~ /([\d\.]+)/ );
 $cgi = new CGI;
 
 eval {
 	# no parameters... print the usage
 	unless ( $cgi->param('go') ) {
-		print "Content-type: text/plain\n\n";
+		print CGI::header('text/plain');
 		require Pod::Text;
 		Pod::Text::pod2text($0);
 		die("NORMALEXIT");
@@ -37,6 +40,8 @@ eval {
 	
 	my $datafile = $cgi->param('datafile');
 	my $allscripts = $cgi->param('allscripts');
+	my $re = $cgi->param('re');
+	my $xre = $cgi->param('xre');
 	my $seed;
 	unless ( $allscripts) {
 		$seed = $cgi->param('seed') || die("There must be a 'seed' specified");
@@ -46,7 +51,11 @@ eval {
 	my $format = $cgi->param('format') || DEFAULT_FORMAT;
 	$format =~ s/[^\w]//g;
 	
-	Module::Dependency::Grapher::setIndex( $datafile ) if $datafile;
+	if ($datafile) {
+		die("Unlikely characters in filename") if ($datafile =~ m/[^\w\/\:\.-]/);
+		die("Unlikely looking filename") if ($datafile =~ m/\.\./);
+		Module::Dependency::Grapher::setIndex( DATADIR . $datafile );
+	}
 
 	# what modules/scripts will be included
 	my @objlist;
@@ -76,14 +85,22 @@ eval {
 		$title = "Dependencies for package$plural $objliststr";
 	}
 
-	if ( $embed ) {
-		print "Content-type: image/" . lc($format) . "\n\n";
-		Module::Dependency::Grapher::makeImage( $kind, \@objlist, '-', {Title => $title, Format => $format} );
+	if ( $embed == 1 ) {
+		print CGI::header("image/" . lc($format) );
+		Module::Dependency::Grapher::makeImage( $kind, \@objlist, '-', {Title => $title, Format => $format, IncludeRegex => $re, ExcludeRegex => $xre} );
 	} else {
-		print "Content-type: text/html\n\n";
+		print CGI::header('text/html');
+		if ( $embed == 0 ) {
+			my $title = $seed || 'all scripts';
+			print qq(<html>\n<head><title>Dependencies for $title</title>\n<link rel="stylesheet" href=") . STYLESHEET_LOC . qq(" type="text/css">\n</head>\n<body>\n);
+		}
 		
-		html_head($seed, $format, $kind, $datafile, $allscripts);
-		Module::Dependency::Grapher::makeHtml( $kind, \@objlist, '-', {Title => $title, NoVersion => 1, NoLegend => 1});
+		my $scripturl = $ENV{SCRIPT_URL} || $ENV{SCRIPT_NAME};
+		print qq(<h1>Dependency Information for $seed</h1><hr />\n<h2>Plot of relationships</h2>
+<img src="$scripturl?go=1&embed=1&seed=$seed&kind=$kind&format=$format&datafile=$datafile&allscripts=$allscripts&re=$re&xre=$xre" alt="Dependency tree">
+);
+		
+		Module::Dependency::Grapher::makeHtml( $kind, \@objlist, '-', {Title => $title, NoVersion => 1, NoLegend => 1, IncludeRegex => $re, ExcludeRegex => $xre});
 		
 		unless ( $allscripts ) {
 			foreach ( @objlist ) {
@@ -108,10 +125,13 @@ eval {
 			}
 		}
 		html_foot();
+		if ( $embed == 0 ) { print qq(</body></html>\n); }
+
 	}
 };
 if ($@ && $@ !~ /NORMALEXIT/) {
-	print "Content-type: text/plain\n\nError encountered! The error was: $@";
+	print CGI::header('text/plain');
+	print "Error encountered! The error was: $@";
 }
 
 ### END OF MAIN
@@ -124,30 +144,10 @@ sub esc {
 	return $x;
 }
 
-sub html_head {
-	my ($seed, $format, $kind, $datafile, $allscripts) = @_;
-	my $prog = $0;
-	$prog =~ s|^.*/||;
-	my $title = $seed || 'all scripts';
-print qq(<html>
-<head><title>Dependencies for $title</title>
-<link rel="stylesheet" href=") . STYLESHEET_LOC . qq(" type="text/css">
-</head>
-<body>
-<h1>Dependency Information for $seed</h1><hr />
-<h2>Plot of relationships</h2>
-<img src="$prog?go=1&embed=1&seed=$seed&kind=$kind&format=$format&datafile=$datafile&allscripts=$allscripts" alt="Dependency tree">
-);
-}
-
 sub html_foot {
 	my $prog = $0;
-	$prog =~ s|^.*/||;print qq(
-<hr />
-<p>$prog version $VERSION</p>
-</body>
-</html>
-);
+	$prog =~ s|^.*/||;
+	print qq(\n<hr />\n<p>$prog version $VERSION</p>\n);
 }
 
 __END__
@@ -170,16 +170,16 @@ Must be true - used to ensure we have been called correctly
 
 =item embed
 
-If true, returns an image, else returns the HTML.
+If 1, returns an image, if 0 returns the HTML, if 2 returns the HTML with no header/footer, suitable for including in another web page.
 
 =item format
 
 Optionally, specifically ask for one kind of image format (default is 'PNG', but may be 
-'GIF' if your GD allows that)
+'GIF' or whatever your GD allows)
 
 =item datafile
 
-Optionally sets the data file location.
+Optionally sets the data file location. The constant DATADIR (default is '') is prepended to this to restrict the files that can be used.
 
 =item seed
 
@@ -192,6 +192,14 @@ if true, use all the scripts in the database as seeds
 =item kind
 
 Which dependencies to plot - may be 'both' (the default) 'parent' or 'child'.
+
+=item re
+
+A regular expression - only show items matching this regex.
+
+=item xre
+
+A regular expression - do not show items matching this regex.
 
 =back
 
@@ -210,7 +218,7 @@ it to you in an easy to understand way.
 
 =head1 VERSION
 
-$Id: cgidepend.plx,v 1.4 2002/01/21 23:29:44 piers Exp $
+$Id: cgidepend.plx,v 1.6 2002/04/28 23:28:48 piers Exp $
 
 =cut
 

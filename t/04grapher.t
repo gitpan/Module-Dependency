@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: 04grapher.t,v 1.1 2002/01/21 15:40:39 piers Exp $
+# $Id: 04grapher.t,v 1.3 2002/04/28 23:28:55 piers Exp $
 use strict;
 use lib qw(./lib ../lib);
 use Test;
@@ -16,7 +16,7 @@ my $tempfile = catfile( $dir, 'temp.tmp' );
 if ( -f $index ) {
 	ok(1);
 } else {
-	for (3..23) { ok(1); }
+	for (2..17) { ok(1); }
 	warn( "You need to run all the tests in order! $index not found, so skipping tests!" );
 	exit;
 }
@@ -48,15 +48,21 @@ Module::Dependency::Grapher::makeHtml('child', 'd', $tempfile, { NoVersion => 1 
 ok( cmpfile( $tempfile, HTML3() ) );
 
 # test images
-my $fmt = 'GIF';
 eval {
-	Module::Dependency::Grapher::makeImage('both', 'd', $tempfile, { Format => $fmt } );
-	ok( cmpfile( $tempfile, 'GIF' ) );
+	require GD;
 };
 if ($@) {
-	$fmt = 'PNG';
-	Module::Dependency::Grapher::makeImage('both', 'd', $tempfile, { Format => $fmt } );
-	ok( cmpfile( $tempfile, 'PNG' ) );
+	warn('skipping GD tests ');
+	ok(1);
+} else {
+	eval {
+		Module::Dependency::Grapher::makeImage('both', 'd', $tempfile, { Format => 'GIF' } );
+		ok( cmpfile( $tempfile, 'GIF' ) );
+	};
+	if ($@) {
+		Module::Dependency::Grapher::makeImage('both', 'd', $tempfile, { Format => 'PNG' } );
+		ok( cmpfile( $tempfile, 'PNG' ) );
+	}
 }
 
 # test postscript
@@ -65,11 +71,11 @@ eval {
 	require PostScript::Simple;
 };
 if ($@) {
-	#warn('skipping PostScript tests');
+	warn('skipping PostScript tests');
 	for (1..5) { ok(1); }
 } else {
 	Module::Dependency::Grapher::makePs('both', 'd', $tempfile, {} );
-	ok( cmpfile( $tempfile, PS() ) );
+	ok( cmpfile( $tempfile, '(x.pl) show stroke' ) );
 	ok( cmpfile( $tempfile, '%!PS-Adobe-3.0 EPSF-1.2' ) );
 	ok( cmpfile( $tempfile, '(Dependency Chart) show stroke' ) );
 	ok( cmpfile( $tempfile, '%%EOF' ) );
@@ -91,37 +97,6 @@ sub cmpfile {
 	} else {
 		return 0;
 	}
-}
-
-sub PS {
-	return q[newpath
-20 u 88 u moveto
-(x.pl) show stroke
-newpath
-20 u 136 u moveto
-(y.pl) show stroke
-newpath
-220 u 76 u moveto
-(a) show stroke
-newpath
-220 u 112 u moveto
-(b) show stroke
-newpath
-220 u 148 u moveto
-(c) show stroke
-newpath
-420 u 112 u moveto
-(d) show stroke
-newpath
-620 u 76 u moveto
-(f) show stroke
-newpath
-620 u 112 u moveto
-(g) show stroke
-newpath
-620 u 148 u moveto
-(h) show stroke
-];
 }
 
 sub HTML {

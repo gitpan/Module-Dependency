@@ -1,18 +1,26 @@
 #!/usr/bin/perl -w
-# $Id: 00base.t,v 1.1 2002/01/21 15:40:39 piers Exp $
+# $Id: 00base.t,v 1.2 2002/04/01 11:17:14 piers Exp $
 use strict;
 use Test;
-BEGIN { plan tests => 8; }
+BEGIN { plan tests => 10; }
 
 use lib qw(./lib ../lib);
+
+# check our modules
 use Module::Dependency::Info;
 BEGIN { ok( $Module::Dependency::Info::VERSION ) };
 use Module::Dependency::Indexer;
 BEGIN { ok( $Module::Dependency::Indexer::VERSION ) };
 use Module::Dependency::Grapher;
 BEGIN { ok( $Module::Dependency::Grapher::VERSION ) };
+
+# check things we _know_ we'll need
 use Storable;
-BEGIN { ok( $Storable::VERSION ) };
+BEGIN { ok( 1 ) };
+use File::Find;
+BEGIN { ok( 1 ) };
+use File::Spec;
+BEGIN { ok( 1 ) };
 
 BEGIN {
 	if ( -d 't') {

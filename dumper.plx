@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# $Id: dumper.plx,v 1.7 2002/01/21 15:41:17 piers Exp $
+# $Id: dumper.plx,v 1.8 2002/04/01 11:17:09 piers Exp $
 
 use strict;
 use lib './lib';
@@ -7,10 +7,10 @@ use Getopt::Std;
 use Module::Dependency::Info;
 use Data::Dumper;
 
-use vars qw/$VERSION $opt_h $opt_t $opt_o $opt_a $opt_s $opt_l $opt_f $opt_p $opt_c $opt_i/;
-($VERSION) = ('$Revision: 1.7 $' =~ /([\d\.]+)/ );
+use vars qw/$VERSION $opt_h $opt_t $opt_o $opt_a $opt_s $opt_l $opt_f $opt_p $opt_c $opt_i $opt_r/;
+($VERSION) = ('$Revision: 1.8 $' =~ /([\d\.]+)/ );
 
-getopts('hto:aslf:p:c:i:');
+getopts('hto:aslf:p:c:i:r');
 if ($opt_h) { usage(); }
 
 *Module::Dependency::Info::TRACE = \*TRACE;
@@ -39,6 +39,21 @@ if ($opt_a) {
 } elsif ($opt_i) {
 	header("Complete entry for $opt_i");
 	print Dumper( Module::Dependency::Info::getItem( $opt_i ) );
+} elsif ($opt_r) {
+	my ($item1, $item2) = (shift, shift);
+	header("Relation between '$item1' and '$item2'");
+	my $rv = Module::Dependency::Info::relationship( $item1, $item2 );
+	if (not defined $rv) {
+		print "Sorry, cannot find '$item1' in database\n";
+	} elsif ($rv eq 'NONE') {
+		print "No relationship found between '$item1' and '$item2'\n";
+	} elsif ($rv eq 'PARENT') {
+		print "'$item2' is a parent of '$item1'\n";
+	} elsif ($rv eq 'CHILD') {
+		print "'$item2' is a child of '$item1'\n";
+	} else {
+		print "Circular dependency found between '$item1' and '$item2'\n";
+	}
 } else {
 	usage();
 }
@@ -96,7 +111,7 @@ dumper - print basic Module::Dependency info
 
 =head1 SYNOPSIS
 
-	dumper.plx [-h] [-t] [-o <datafile>] [-a] [-s] [-l] [ {-f|-p|-c|-i} <script/module>]
+	dumper.plx [-h] [-t] [-o <datafile>] [-a] [-s] [-l] [ {-f|-p|-c|-i} <script/module>] [ -r item1 item2 ]
 
 	-h Displays this help
 	-t Displays tracing messages
@@ -109,6 +124,7 @@ dumper - print basic Module::Dependency info
 	-p Get list of items that immediately depend on script/module (i.e. parents)
 	-c Get list of items that script/module immediately depends on (i.e. children)
 	-i Dump the record for the script/module
+	-r State the relationship, if any, between item1 and item2 - both may be scripts or modules.
 
 =head1 EXAMPLE
 
@@ -127,7 +143,7 @@ When you run this tool it prints a dump of the data requested using Data::Dumper
 
 =head1 VERSION
 
-$Id: dumper.plx,v 1.7 2002/01/21 15:41:17 piers Exp $
+$Id: dumper.plx,v 1.8 2002/04/01 11:17:09 piers Exp $
 
 =cut
 

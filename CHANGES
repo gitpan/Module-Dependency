@@ -1,0 +1,32 @@
+CHANGES
+
+$Date: 2002/04/28 23:28:48 $
+
+Indexer.pm converts paths to absolute paths before running File::Find,
+giving the correct, expected, behaviour when you try to index relative
+folders
+
+Added support for the 'base' pragma.
+
+Added the 'relationship' method (and hence the -r option to dumper.plx)
+which tells you how two items are related.
+
+Improved POD-skipping algorithm - i.e. it now has one.
+
+There should be no platform-specific code left, and in theory this will
+run on any OS.
+
+Added a little POD-only module called Module::Dependency.
+
+We 'use' as little as possible and 'require' the rest.
+
+The indexer can optionally (and does, by default) look at a file's #! line
+to see if it's a perl program. .pl, .plx and .pm files are always indexed.
+
+Added accessor routine for the 'check_shebang' switch.
+
+cgidepend.plx, the CGI program, slightly tweaked to be even more
+mod_perl friendly.
+
+Some code and ideas kindly contributed by S Rezic, S Heffner and C Sampson,
+among others.

@@ -1,14 +1,13 @@
 package Module::Dependency::Grapher;
 
 use Module::Dependency::Info;
-use GD;
 
 use vars qw/$VERSION @TIERS %LOOKUP %COLOURS
 @numElements $colWidth $rowHeight
 $nOffset $eOffset $sOffset $wOffset
 /;
 
-($VERSION) = ('$Revision: 1.12 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 1.16 $' =~ /([\d\.]+)/ );
 
 %COLOURS = (
 	type => [0,0,0],
@@ -22,13 +21,15 @@ $nOffset $eOffset $sOffset $wOffset
 	white => [255,255,255],
 );
 
+### PUBLIC INTERFACE FUNCTIONS
+
 sub setIndex {
 	Module::Dependency::Info::setIndex( @_ );
 }
 
 sub makeText {
 	my ($kind, $seeds, $filename, $options) = @_;
-	my ($maxitems, $pushed) = _makeCols($kind, $seeds);
+	my ($maxitems, $pushed) = _makeCols($kind, $seeds, $options->{IncludeRegex}, $options->{ExcludeRegex});
 	my $imgtitle = $options->{'Title'} || 'Dependency Tree';
 
 	# print the text out
@@ -55,7 +56,7 @@ sub makeText {
 
 sub makeHtml {
 	my ($kind, $seeds, $filename, $options) = @_;
-	my ($maxitems, $pushed) = _makeCols($kind, $seeds);
+	my ($maxitems, $pushed) = _makeCols($kind, $seeds, $options->{IncludeRegex}, $options->{ExcludeRegex});
 	
 	my %rowclasses = (
 		parent => 'MDGraphParent',
@@ -94,11 +95,14 @@ sub makeHtml {
 }
 
 sub makeImage {
+	require GD;
+	import GD;
+
 	my ($kind, $seeds, $filename, $options) = @_;
 	my $type = uc($options->{'Format'}) || 'PNG';
 	my $imgtitle = $options->{'Title'} || 'Dependency Chart';
 	
-	my ($maxitems, $pushed) = _makeCols($kind, $seeds);
+	my ($maxitems, $pushed) = _makeCols($kind, $seeds, $options->{IncludeRegex}, $options->{ExcludeRegex});
 	_imageDimsSet();
 
 	LOG( "Making image to $filename" );
@@ -128,14 +132,15 @@ sub makeImage {
 	
 	# add legend and prettiness
 	TRACE( "Drawing legend etc" );
-	$im->string(gdMediumBoldFont, 5, 3, $imgtitle, $colours->{'title1'});
-	$im->string(gdSmallFont, 5, 17, "Grapher.pm $VERSION - " . localtime(), $colours->{'title1'}) unless $options->{'NoVersion'};
+	$im->string(gdMediumBoldFont(), 5, 3, $imgtitle, $colours->{'title1'});
+	$im->string(gdSmallFont(), 5, 17, "Grapher.pm $VERSION - " . localtime(), $colours->{'title1'}) unless $options->{'NoVersion'};
 	
 	_drawLegend( $im, $colours, $realImgWidth - 160 - $eOffset, 3 ) unless $options->{'NoLegend'};
 
 	TRACE( "Printing image" );
 	local *IMG;
 	open(IMG, "> $filename") or die("Can't open $filename for image write: $!");
+	binmode( IMG );
 	if ($type eq 'GIF') { print IMG $im->gif;
 	} elsif ($type eq 'PNG') { print IMG $im->png;
 	} elsif ($type eq 'JPG') { print IMG $im->jpg;
@@ -145,16 +150,17 @@ sub makeImage {
 }
 
 sub makePs {
+	require PostScript::Simple;
+	
 	my ($kind, $seeds, $filename, $options) = @_;
 	my $imgtitle = $options->{'Title'} || 'Dependency Chart';
 	my $eps = ( uc($options->{'Format'}) eq 'PS') ? 0 : 1;
 	my $colour = exists( $options->{'Colour'} ) ? $options->{'Colour'} : 1;
 	my $font = $options->{'Font'} || 'Helvetica';
 	
-	my ($maxitems, $pushed) = _makeCols($kind, $seeds);
+	my ($maxitems, $pushed) = _makeCols($kind, $seeds, $options->{IncludeRegex}, $options->{ExcludeRegex});
 	_psDimsSet();
 
-	require PostScript::Simple;
 	LOG( "Making postscript to $filename" );
 
 	if ($maxitems < 8) {
@@ -199,12 +205,17 @@ sub makePs {
 	$p->output( $filename );
 }
 
+### PRIVATE INTERNAL ROUTINES
+
 # algorithm which sorts dependencies into a series of generations (the @TIERS array)
 sub _makeCols {
-	my ($kind, $seeds) = @_;
+	my $kind = shift();
+	my $seeds = shift();
+	my $re = shift() || '';
+	my $xre = shift() || '';
 	
 	$kind = uc( $kind );
-	TRACE("makeCols: kind <$kind>");
+	TRACE("makeCols: kind <$kind> re <$re> xre <$xre>");
 	unless (ref( $seeds )) { $seeds = [ $seeds ]; }
 	unless ( $kind eq 'CHILD' || $kind eq 'PARENT' || $kind eq 'BOTH' ) { die("unrecognized sort of tree required: $kind - should be 'child', 'parent' or 'both'"); }
 	
@@ -232,6 +243,11 @@ sub _makeCols {
 
 				foreach my $dep ( @{$obj->{'depends_on'}} ) {
 					next if $seen{ $dep };
+					if ( ($re && $dep !~ m/$re/) || ($xre && $dep =~ m/$xre/) ) {	# if given regexps then apply filter
+						TRACE("  !..$dep skipped by regex");
+						$seen{ $dep } = 1;
+						next;
+					}
 					TRACE("  ...found $dep");
 					$LOOKUP{ $dep } = Module::Dependency::Info::getItem( $dep ) || do {$seen{ $dep } = 1; next;};
 					push (@$temp, $dep);
@@ -259,6 +275,11 @@ sub _makeCols {
 				
 				foreach my $dep ( @{$obj->{'depended_upon_by'}} ) {
 					next if $seen{ $dep };
+					if ( ($re && $dep !~ m/$re/) || ($xre && $dep =~ m/$xre/) ) {	# if given regexps then apply filter
+						TRACE("  !..$dep skipped by regex");
+						$seen{ $dep } = 1;
+						next;
+					}
 					TRACE("  ...found $dep");
 					$LOOKUP{ $dep } = Module::Dependency::Info::getItem( $dep ) || do {$seen{ $dep } = 1; next;};
 					push (@$temp, $dep);
@@ -372,7 +393,7 @@ sub _drawPsLegend {
 sub _drawText {
 	my ($im, $colours, $x, $y, $text) = @_;
 	if (defined $colours ) {
-		$im->string(gdTinyFont, $x, $y, $text, $colours->{'type'});
+		$im->string(gdTinyFont(), $x, $y, $text, $colours->{'type'});
 	} else {
 		$im->text($x, $y, $text);
 	}
@@ -520,6 +541,16 @@ pretty standard thesedays though) Default is PNG.
 
 The makePs() method recognizes only 'EPS' or 'PS' as format options. Default is 'EPS'.
 
+=item IncludeRegex
+
+A regular expression use to filter the items displayed. If this is '::' for example then the output will only
+show dependencies that contain those characters.
+
+=item ExcludeRegex
+
+A regular expression use to filter the items displayed. If this is '::' for example then the output will B<not>
+show dependencies that contain those characters.
+
 =item NoLegend
 
 If true, don't print the 'legend' box/text
@@ -540,12 +571,16 @@ sed by makePs() only. Set the font used in the drawing. Default is 'Helvetica'.
 
 =head1 PREREQUISITES
 
-GD. If you want to use the makePs() method you'll need PostScript::Simple installed.
+If you want to use the makePs() method you'll need PostScript::Simple installed.
+If you want to use the makeImage() method you'll need GD installed.
+However, these modules are 'require'd as needed so you can quite happily use the makeText and makeHtml routines.
+
+=head1 SEE ALSO
+
+Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Grapher.pm,v 1.12 2002/01/21 15:40:13 piers Exp $
+$Id: Grapher.pm,v 1.16 2002/04/28 23:28:55 piers Exp $
 
 =cut
-
-

@@ -1,10 +1,10 @@
 #!/usr/bin/perl -w
-# $Id: 01info.t,v 1.1 2002/01/21 15:40:39 piers Exp $
+# $Id: 01info.t,v 1.2 2002/04/01 11:17:14 piers Exp $
 use strict;
 use lib qw(./lib ../lib);
 use Test;
 use Module::Dependency::Info;
-BEGIN { plan tests => 18; }
+BEGIN { plan tests => 24; }
 
 BEGIN {
 	if ( -d 't') {
@@ -14,7 +14,7 @@ BEGIN {
 }
 
 unless ( -f 'dbdump.dat' ) {
-	for (2..18) { ok(1); }
+	for (2..24) { ok(1); }
 	warn( "You need to run all the tests in order! dbdump.dat not found, so skipping tests!" );
 	exit;
 }
@@ -26,7 +26,7 @@ eval {
 Module::Dependency::Info::setIndex( 'dbdump.dat' );
 ok( Module::Dependency::Info::retrieveIndex );
 
-ok( @{ Module::Dependency::Info::allItems() } == 10 );
+ok( @{ Module::Dependency::Info::allItems() } == 12 );
 ok( Module::Dependency::Info::allScripts()->[1] eq 'x.pl' );
 
 my $i = Module::Dependency::Info::getItem('d');
@@ -44,6 +44,15 @@ ok( ! defined( $Module::Dependency::Info::UNIFIED ) );
 
 # implicit load - only need one test
 ok( Module::Dependency::Info::getParents('f')->[0] eq 'd');
+
+# test relationship()
+#*Module::Dependency::Info::TRACE = sub { my $msg = shift; print ">>>$msg<<<\n"; };
+ok( ! defined( Module::Dependency::Info::relationship('floop', 'b') ) );
+ok( Module::Dependency::Info::relationship('a', 'j') eq 'NONE' );
+ok( Module::Dependency::Info::relationship('j', 'a') eq 'NONE' );
+ok( Module::Dependency::Info::relationship('b', 'h') eq 'CHILD' );
+ok( Module::Dependency::Info::relationship('h', 'b') eq 'PARENT' );
+ok( Module::Dependency::Info::relationship('b', 'e') eq 'CIRCULAR' );
 
 # bad data
 ok( ! defined( Module::Dependency::Info::getItem('floop') ) );

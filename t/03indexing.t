@@ -1,12 +1,12 @@
 #!/usr/bin/perl -w
-# $Id: 03indexing.t,v 1.1 2002/01/21 15:40:39 piers Exp $
+# $Id: 03indexing.t,v 1.4 2002/04/28 23:42:21 piers Exp $
 use strict;
 use lib qw(./lib ../lib);
 use Test;
 use Cwd;
 use File::Spec::Functions;
 use Module::Dependency::Info;
-BEGIN { plan tests => 23; }
+BEGIN { plan tests => 26; }
 
 my $dir = cwd();
 if (-d 't') { $dir = catfile( $dir, 't'); }
@@ -19,7 +19,7 @@ ok( $index );
 if ( -f $index ) {
 	ok(1);
 } else {
-	for (3..23) { ok(1); }
+	for (3..26) { ok(1); }
 	warn( "You need to run all the tests in order! $index not found, so skipping tests!" );
 	exit;
 }
@@ -27,8 +27,8 @@ if ( -f $index ) {
 Module::Dependency::Info::setIndex( $index );
 ok( Module::Dependency::Info::retrieveIndex );
 
-ok( @{ Module::Dependency::Info::allItems() } == 10 );
-ok( Module::Dependency::Info::allScripts()->[1] eq 'x.pl' );
+ok( @{ Module::Dependency::Info::allItems() } == 11 );
+ok( Module::Dependency::Info::allScripts()->[1] =~ m/(x.pl|y.pl|z.cgi)/ );
 
 my $i = Module::Dependency::Info::getItem('d');
 ok( $i->{'filename'} =~ m|d\.pm| );
@@ -56,5 +56,20 @@ Module::Dependency::Info::setIndex( $index2 );
 ok( Module::Dependency::Info::getFilename('f') =~ m|f\.pm$|);
 ok( Module::Dependency::Info::getChildren('f')->[0] eq 'strict');
 ok( Module::Dependency::Info::getParents('f')->[0] eq 'd');
+
+my $rv;
+$rv = Module::Dependency::Info::relationship('z.cgi', 'a');
+ok( $rv eq 'NONE');
+#print "$rv\n";
+
+$rv = Module::Dependency::Info::relationship('b', 'e');
+ok( $rv eq 'CHILD');
+#print "$rv\n";
+
+$rv = Module::Dependency::Info::getChildren('b');
+my $j = join('', @$rv);
+ok($j =~ m/Oberheim/);
+#print $j, "\n";
+
 
 # right, that's tested the Indexing system

@@ -129,6 +129,16 @@ DESCRIPTION
         The makePs() method recognizes only 'EPS' or 'PS' as format options.
         Default is 'EPS'.
 
+    IncludeRegex
+        A regular expression use to filter the items displayed. If this is
+        '::' for example then the output will only show dependencies that
+        contain those characters.
+
+    ExcludeRegex
+        A regular expression use to filter the items displayed. If this is
+        '::' for example then the output will not show dependencies that
+        contain those characters.
+
     NoLegend
         If true, don't print the 'legend' box/text
 
@@ -144,11 +154,16 @@ DESCRIPTION
         'Helvetica'.
 
 PREREQUISITES
-    GD. If you want to use the makePs() method you'll need
-    PostScript::Simple installed.
+    If you want to use the makePs() method you'll need PostScript::Simple
+    installed. If you want to use the makeImage() method you'll need GD
+    installed. However, these modules are 'require'd as needed so you can
+    quite happily use the makeText and makeHtml routines.
+
+SEE ALSO
+    Module::Dependency and the README files.
 
 VERSION
-    $Id: README.MODULES,v 1.5 2002/01/25 00:46:29 piers Exp $
+    $Id: README.MODULES,v 1.7 2002/04/28 23:33:30 piers Exp $
 
 NAME
     Module::Dependency::Indexer - creates the databases used by the
@@ -158,11 +173,14 @@ SYNOPSIS
             use Module::Dependency::Indexer;
             Module::Dependency::Indexer::setIndex( '/var/tmp/dependency/unified.dat' );
             Module::Dependency::Indexer::makeIndex( $directory, [ $another, $andanother... ] );
+            Module::Dependency::Indexer::setShebangCheck( 0 );
 
 DESCRIPTION
     This module looks at all .pm, .pl and .plx files within and below a
     given directory/directories (found with File::Find), reads through them
-    and extracts some information about them:
+    and extracts some information about them. If the shebang check is turned
+    on then it also looks at the first line of all other files, to see if
+    they're perl programs too. We extract this information:
 
     *   The name of the package (e.g. 'Foo::Bar') or the name of the script
         (e.g. 'chat.pl')
@@ -193,12 +211,16 @@ FUNCTIONS
 
         Default is /var/tmp/dependence/unified.dat
 
-    makeIndex( $directory, [ $another, $andanother... ] );
+    makeIndex( $directory, [ $another, $andanother... ] )
         Builds, and stores to the current data file, a SINGLE database for
         all the files found under all of the supplied directories. To create
         multiple indexes, run this method many times with a setIndex
         inbetween each so that you don't clobber the previous run's
         datafile.
+
+    setShebangCheck( BOOLEAN )
+        Turns on or off the checking of #! lines for all files that are not
+        .pl, .plx or .pm filenames. By default we do check the #! lines.
 
 NOTE ABOUT WHAT IS INDEXED
     A database entry is made for each file scanned. This makes the generally
@@ -250,6 +272,12 @@ DEBUGGING
     activity. Override our TRACE with your own routine, e.g. one that prints
     to STDERR, to see these messages.
 
+SEE ALSO
+    Module::Dependency and the README files.
+
+VERSION
+    $Id: README.MODULES,v 1.7 2002/04/28 23:33:30 piers Exp $
+
 NAME
     Module::Dependency::Info - retrieve dependency information for scripts
     and modules
@@ -274,6 +302,8 @@ SYNOPSIS
             $filename = Module::Dependecy::Info::getFilename( 'Foo::Bar' [, $forceReload ] );
             $listref = Module::Dependecy::Info::getChildren( $node [, $forceReload ] );
             $listref = Module::Dependecy::Info::getParents( $node [, $forceReload ] );
+        
+            $value = Module::Dependency::Info::relationship( 'Foo::Bar', 'strict' );
         
             Module::Dependecy::Info::dropIndex();
 
@@ -329,6 +359,24 @@ METHODS
         Gets a list of all reverse dependencies, i.e. packages that depend
         upon this item, for the package/script named, or undef if no record
         could be found.
+
+    $value = Module::Dependency::Info::relationship( $itemName, $otherItem
+    );
+        Tells you whether, according to the current database, $itemName is
+        related to $otherItem. $itemName is a module or script in the
+        database (i.e. it's a file that has been indexed). Return values
+        are:
+
+        undef if $itemName is not in the database
+
+        'NONE' if no link can be found (may be a false negative if links
+        between the 2 items are not in the index)
+
+        'PARENT' if the $otherItem depends upon $itemName
+
+        'CHILD' if $itemName depends upon $otherItem
+
+        'CIRCULAR' if $otherItem is both 'PARENT' and 'CHILD'.
 
     dropIndex
         drops the current database - you generally have no need to do this
@@ -389,4 +437,10 @@ DEBUGGING
     There is a TRACE stub function, and the module uses TRACE() to log
     activity. Override our TRACE with your own routine, e.g. one that prints
     to STDERR, to see these messages.
+
+SEE ALSO
+    Module::Dependency and the README files.
+
+VERSION
+    $Id: README.MODULES,v 1.7 2002/04/28 23:33:30 piers Exp $
 

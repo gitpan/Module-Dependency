@@ -1,6 +1,6 @@
 use ExtUtils::MakeMaker;
 
-# $Id: Makefile.PL,v 1.1 2002/01/07 04:03:05 piers Exp $
+# $Id: Makefile.PL,v 1.4 2002/04/28 23:28:48 piers Exp $
 
 WriteMakefile(
 	AUTHOR		=> 'P Kent (pause@selsyn.co.uk)',
@@ -13,9 +13,10 @@ WriteMakefile(
 	},
 	VERSION_FROM	=> 'lib/Module/Dependency/Indexer.pm',
 	PREREQ_PM	=> {
-				GD => 0,
 				Storable => 0,
-				File::Find => 0
+				File::Find => 0,
+				File::Spec => 0,
+				Safe => 0,
 			},
 );
 
