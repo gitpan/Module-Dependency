@@ -1,0 +1,551 @@
+package Module::Dependency::Grapher;
+
+use Module::Dependency::Info;
+use GD;
+
+use vars qw/$VERSION @TIERS %LOOKUP %COLOURS
+@numElements $colWidth $rowHeight
+$nOffset $eOffset $sOffset $wOffset
+/;
+
+($VERSION) = ('$Revision: 1.12 $' =~ /([\d\.]+)/ );
+
+%COLOURS = (
+	type => [0,0,0],
+	links => [164,192,255],
+	blob_to => [192,0,0],
+	blob_from => [0,192,0],
+	border => [192,192,192],
+	title1 => [64,0,0],
+	test => [255,0,0],
+	black => [0,0,0],
+	white => [255,255,255],
+);
+
+sub setIndex {
+	Module::Dependency::Info::setIndex( @_ );
+}
+
+sub makeText {
+	my ($kind, $seeds, $filename, $options) = @_;
+	my ($maxitems, $pushed) = _makeCols($kind, $seeds);
+	my $imgtitle = $options->{'Title'} || 'Dependency Tree';
+
+	# print the text out
+	TRACE( "Printing text to $filename" );
+	local *TXT;
+	open(TXT, "> $filename") or die("Can't open $filename for text write: $!");
+	print TXT $imgtitle, "\n", ('-' x length($imgtitle)) . "\n\n";
+	print TXT q[Key: Parent> indicates parent dependencies
+      Child> are child dependencies
+       ****> indicates the item(s) from which the relationships are drawn
+
+] unless $options->{'NoLegend'};
+	print(TXT "Grapher.pm $VERSION - " . localtime() . "\n\n") unless $options->{'NoVersion'};
+
+	my $pref = 'Parent>';
+	for (0 .. $#TIERS) {
+		if ($_ == $pushed) { $pref = '****>'; }
+		elsif ($_ == $pushed+1) { $pref = 'Child>'; }
+		printf( TXT "%8s %s %s\n", $pref, '+-', join(', ', sort { $a cmp $b } @{$TIERS[$_]}) );
+		print( TXT "         |\n") unless ($_ == $#TIERS);
+	}
+	close TXT;
+}
+
+sub makeHtml {
+	my ($kind, $seeds, $filename, $options) = @_;
+	my ($maxitems, $pushed) = _makeCols($kind, $seeds);
+	
+	my %rowclasses = (
+		parent => 'MDGraphParent',
+		seed => 'MDGraphSeed',
+		child => 'MDGraphChild',
+	);
+	
+	my %notes = (
+		parent => 'Parent',
+		seed => '****',
+		child => 'Child',
+	);
+	
+	my $imgtitle = $options->{'Title'} || 'Dependency Tree';
+	
+	# print the HTML out
+	TRACE( "Printing HTML to $filename" );
+	local *HTML;
+	open(HTML, "> $filename") or die("Can't open $filename for HTML write: $!");
+	print HTML qq(<div class="MDGraph"><h2>$imgtitle</h2>\n);
+	print(HTML "<h4>Grapher.pm $VERSION - " . localtime() . "</h4>\n") unless $options->{'NoVersion'};
+	print HTML qq[Key:<br />$notes{'parent'} indicates parent dependencies<br />
+	$notes{'seed'} indicates the item(s) from which the relationships are drawn<br />
+    $notes{'child'} are child dependencies<br />\n\n] unless $options->{'NoLegend'};
+
+	my $type = 'parent';
+	print HTML qq(<table class="MDGraphTable">\n);
+	print HTML qq(<tr><th>Kind</th><th>Items</th></tr>\n);
+	for (0 .. $#TIERS) {
+		if ($_ == $pushed) { $type = 'seed'; }
+		elsif ($_ == $pushed+1) { $type = 'child'; }
+		print( HTML qq(<tr><td class="$rowclasses{$type}">$notes{$type}</td><td class="$rowclasses{$type}">), join(', ', sort { $a cmp $b } @{$TIERS[$_]}), "</td></tr>\n" );
+	}
+	print HTML "</table>\n</div>\n";
+	close HTML;
+}
+
+sub makeImage {
+	my ($kind, $seeds, $filename, $options) = @_;
+	my $type = uc($options->{'Format'}) || 'PNG';
+	my $imgtitle = $options->{'Title'} || 'Dependency Chart';
+	
+	my ($maxitems, $pushed) = _makeCols($kind, $seeds);
+	_imageDimsSet();
+
+	LOG( "Making image to $filename" );
+	
+	if ($maxitems < 8) {
+		$rowHeight = 8*$rowHeight*1.5 / $maxitems;
+	} elsif ($maxitems < 16) {
+		$rowHeight = 16*$rowHeight / $maxitems;
+	}
+	
+	my $imgWidth = $colWidth * (scalar(@TIERS) < 3 ? 3 : scalar(@TIERS));
+	my $imgHeight = $rowHeight * $maxitems;
+	
+	my $realImgWidth = $imgWidth + $wOffset + $eOffset;
+	my $realImgHeight = $imgHeight + $nOffset + $sOffset;
+	LOG( "Rows are $rowHeight px, maxitems is $maxitems, image is $realImgWidth * $realImgWidth" );
+	
+	# set up image object
+	my $im = new GD::Image($imgWidth + $wOffset + $eOffset, $imgHeight + $nOffset + $sOffset) || die("Couldn't build GD object: $!");
+	my $colours;
+	$im->colorAllocate( 255,255,255 );
+	while (my ($k, $v) = each %COLOURS) { $colours->{ $k } = $im->colorAllocate( @$v ); }
+	
+	_packObjects($imgHeight);
+	_linkObjects($im, $colours);
+	_labelObjects($im, $colours);
+	
+	# add legend and prettiness
+	TRACE( "Drawing legend etc" );
+	$im->string(gdMediumBoldFont, 5, 3, $imgtitle, $colours->{'title1'});
+	$im->string(gdSmallFont, 5, 17, "Grapher.pm $VERSION - " . localtime(), $colours->{'title1'}) unless $options->{'NoVersion'};
+	
+	_drawLegend( $im, $colours, $realImgWidth - 160 - $eOffset, 3 ) unless $options->{'NoLegend'};
+
+	TRACE( "Printing image" );
+	local *IMG;
+	open(IMG, "> $filename") or die("Can't open $filename for image write: $!");
+	if ($type eq 'GIF') { print IMG $im->gif;
+	} elsif ($type eq 'PNG') { print IMG $im->png;
+	} elsif ($type eq 'JPG') { print IMG $im->jpg;
+	} elsif ($type eq 'GD') { print IMG $im->gd;
+	} else { die("Unrecognized image type $type"); }
+	close IMG;
+}
+
+sub makePs {
+	my ($kind, $seeds, $filename, $options) = @_;
+	my $imgtitle = $options->{'Title'} || 'Dependency Chart';
+	my $eps = ( uc($options->{'Format'}) eq 'PS') ? 0 : 1;
+	my $colour = exists( $options->{'Colour'} ) ? $options->{'Colour'} : 1;
+	my $font = $options->{'Font'} || 'Helvetica';
+	
+	my ($maxitems, $pushed) = _makeCols($kind, $seeds);
+	_psDimsSet();
+
+	require PostScript::Simple;
+	LOG( "Making postscript to $filename" );
+
+	if ($maxitems < 8) {
+		$rowHeight = 8*$rowHeight*1.5 / $maxitems;
+	} elsif ($maxitems < 16) {
+		$rowHeight = 16*$rowHeight / $maxitems;
+	}
+
+	my $imgWidth = $colWidth * (scalar(@TIERS) < 3 ? 3 : scalar(@TIERS));
+	my $imgHeight = $rowHeight * $maxitems;
+	
+	my $realImgWidth = $imgWidth + $wOffset + $eOffset;
+	my $realImgHeight = $imgHeight + $nOffset + $sOffset;
+	LOG( "Rows are $rowHeight px, maxitems is $maxitems, image is $realImgWidth * $realImgWidth" );
+
+	my $p = new PostScript::Simple(eps => $eps, colour => $colour, clip => 1, landscape => (! $eps),
+							xsize => $realImgWidth, ysize => $realImgHeight, units => 'bp')	# we use points because they're close to pixels, as used in GD
+							|| die("Can't build Postscript object: $!");
+	$p->setlinewidth(0.5);
+	$p->setfont( $font, 9 );
+	
+	_packObjects($imgHeight);
+	_linkObjects($p);
+	$p->setcolour( @{$COLOURS{'type'}} );
+	_labelObjects($p);
+
+	# add legend and prettiness
+	TRACE( "Drawing legend etc" );
+	_drawPsLegend( $p, $realImgWidth - 160 - $eOffset, 16 ) unless $options->{'NoLegend'};
+	
+	$p->setfont( $font, 16 );
+	$p->setcolour( @{$COLOURS{'title1'}} );
+	$p->text(15, 18, $imgtitle);
+	
+	$p->setfont( $font, 12 );
+	$p->setcolour( @{$COLOURS{'title1'}} );
+	$p->text(15, 35, "Grapher.pm $VERSION - " . localtime()) unless $options->{'NoVersion'};
+	
+# 	$p->setcolour( @{$COLOURS{'test'}} ); 	$p->line( 0, $nOffset, $realImgWidth, $nOffset); 	$p->line( 0, $realImgHeight-$sOffset, $realImgWidth, $realImgHeight-$sOffset); 	$p->line( $wOffset, 0, $wOffset, $realImgHeight); 	$p->line( $realImgWidth-$eOffset, 0, $realImgWidth-$eOffset, $realImgHeight);
+
+	TRACE( "Printing image" );
+	$p->output( $filename );
+}
+
+# algorithm which sorts dependencies into a series of generations (the @TIERS array)
+sub _makeCols {
+	my ($kind, $seeds) = @_;
+	
+	$kind = uc( $kind );
+	TRACE("makeCols: kind <$kind>");
+	unless (ref( $seeds )) { $seeds = [ $seeds ]; }
+	unless ( $kind eq 'CHILD' || $kind eq 'PARENT' || $kind eq 'BOTH' ) { die("unrecognized sort of tree required: $kind - should be 'child', 'parent' or 'both'"); }
+	
+	@TIERS = ();
+	my %seen = ();
+	
+	# this entry is where we start the tree discovery off from
+	my $seedrow = [ @$seeds ];
+	push( @TIERS, $seedrow );
+	
+	my $found = 0;
+	my $ptr = 0;
+	
+	# get child dependencies
+	if ($kind eq 'CHILD' || $kind eq 'BOTH') {
+		TRACE("makeCols: child dependencies");
+		do {
+			$found = 0;
+			my $temp = [];
+			foreach ( @{$TIERS[ $ptr ]} ) {
+				my $obj = Module::Dependency::Info::getItem( $_ );
+				$LOOKUP{ $_ } = $obj;
+				$seen{ $_ } = 1;
+				TRACE("...for $obj->{'package'}");
+
+				foreach my $dep ( @{$obj->{'depends_on'}} ) {
+					next if $seen{ $dep };
+					TRACE("  ...found $dep");
+					$LOOKUP{ $dep } = Module::Dependency::Info::getItem( $dep ) || do {$seen{ $dep } = 1; next;};
+					push (@$temp, $dep);
+					$seen{ $dep } = 1;
+					$found = 1;
+				}
+			}
+			push( @TIERS, $temp ) if $found;
+			$ptr++;
+		} while ($found == 1);
+	}
+	
+	my $pushed = 0;
+	# get parent dependencies
+	if ($kind eq 'PARENT' || $kind eq 'BOTH') {
+		TRACE("makeCols: parent dependencies");
+		do {
+			$found = 0;
+			my $temp = [];
+			foreach ( @{$TIERS[ 0 ]} ) {
+				my $obj = Module::Dependency::Info::getItem( $_ );
+				$LOOKUP{ $_ } = $obj;
+				$seen{ $_ } = 1;
+				TRACE("...for $obj->{'package'}");
+				
+				foreach my $dep ( @{$obj->{'depended_upon_by'}} ) {
+					next if $seen{ $dep };
+					TRACE("  ...found $dep");
+					$LOOKUP{ $dep } = Module::Dependency::Info::getItem( $dep ) || do {$seen{ $dep } = 1; next;};
+					push (@$temp, $dep);
+					$seen{ $dep } = 1;
+					$found = 1;
+				}
+			}
+			if ($found) {
+				unshift( @TIERS, $temp );
+				$pushed += 1;
+			}
+		} while ($found == 1);
+	}
+	
+	# extract sizes of each column
+	@numElements = ();
+	my $maxitems = 1;
+	foreach (@TIERS) {
+		my $num = $#{ $_ } + 1;
+		$maxitems = $num if $num > $maxitems;
+		push( @numElements, $num);
+	}
+	return ($maxitems, $pushed);
+}
+
+# work out _where_ we're going to put the items
+sub _packObjects {
+	my ($imgHeight) = @_;
+	TRACE( "Packing objects" );
+	for my $x (0 .. $#TIERS) {
+		my $y = 0;
+		foreach ( sort { $a cmp $b } @{$TIERS[ $x ]} ) {
+			my $obj = $LOOKUP{ $_ };
+			my $cx = ($colWidth * $x) + $wOffset;
+			my $cy =  ( ($imgHeight * ($y+1)) / ($numElements[ $x ]+1) ) + $nOffset;
+#			TRACE( "Putting text $obj->{'package'} at $cx, $cy" );
+			# use the first, i.e. highest up the food chain, coordinates only
+			unless ( exists $obj->{'x'} ) {
+				$obj->{'x'} = $cx;
+				$obj->{'y'} = $cy;
+				$obj->{'x2'} = $cx + 1 + 5 * length($obj->{'package'}); # gdTinyFont has characters 5 pixels wide
+			}
+			$y++;
+		}
+	}
+}
+
+sub _linkObjects {
+	my ($im, $colours) = @_;
+	# draw a load of lines...
+	TRACE( "Drawing links between items" );
+	foreach my $x (@TIERS) {
+		#...for every object
+		foreach ( @$x ) {
+			my $obj = $LOOKUP{ $_ };
+			#...link to all its dependencies
+			foreach my $dep ( @{$obj->{'depends_on'}} ) {
+				next unless (exists $LOOKUP{$dep});
+				my $depObj = $LOOKUP{$dep};
+				TRACE( $obj->{'package'} . ' -> ' . $depObj->{'package'} );
+				_drawLink( $im, $colours, $obj->{'x2'}, $obj->{'y'}, $depObj->{'x'}, $depObj->{'y'});
+			}
+		}
+	}
+}
+
+sub _labelObjects {
+	my ($p, $colours) = @_;
+	TRACE( "Drawing the text" );
+	foreach my $x (@TIERS) {
+		foreach ( @$x ) {
+			my $obj = $LOOKUP{ $_ };
+			_drawText($p, $colours, $obj->{'x'}, $obj->{'y'}, $obj->{'package'});
+		}
+	}
+}
+
+sub _drawLegend {
+	my ($im, $colours, $x, $y) = @_;
+
+	$im->rectangle( $x, $y, $x+138, $y+37, $colours->{'border'} );
+	$x += 4;
+	$y += 3;
+	
+	_drawText( $im, $colours, $x, $y, 'Legend');
+	$im->line( $x, $y+8, $x+30, $y+8, $colours->{'type'} );
+	$y += 12;
+	_drawLink( $im, $colours, $x+31, $y, 100+$x, $y);
+	_drawText( $im, $colours, $x, $y, 'Foo.pl');
+	_drawText( $im, $colours, 100+$x, $y, 'Bar');
+	$y += 12;
+	_drawText( $im, $colours, $x, $y, 'Foo.pl depends upon Bar.pm');
+}
+
+sub _drawPsLegend {
+	my ($p, $x, $y) = @_;
+
+	_drawText( $p, undef, $x+2, $y+26, 'Legend');
+	$p->setlinewidth(0.4);
+	$p->line( $x+2, $y+25, $x+32, $y+25 );
+	_drawText( $p, undef, $x+2, $y+14, 'Foo.pl');
+	_drawText( $p, undef, $x+102, $y+14, 'Bar');
+	_drawText( $p, undef, $x+2, $y+2, 'Foo.pl depends upon Bar.pm');
+	_drawLink( $p, undef, $x+29, $y+14, $x+102, $y+14);
+
+	$p->setlinewidth(0.25);
+	$p->setcolour( @{$COLOURS{'black'}} );
+	$p->box( $x, $y-1, $x+120, $y+34 );
+}
+
+sub _drawText {
+	my ($im, $colours, $x, $y, $text) = @_;
+	if (defined $colours ) {
+		$im->string(gdTinyFont, $x, $y, $text, $colours->{'type'});
+	} else {
+		$im->text($x, $y, $text);
+	}
+}
+
+sub _drawLink {
+	my ($im, $colours, $xa, $ya, $xb, $yb) = @_;
+	
+	if (defined $colours) {
+		$im->line( $xa, $ya+3, $xb-3, $yb+3, $colours->{'links'} );
+		$im->rectangle( $xa, $ya+2, $xa+1, $ya+4, $colours->{'blob_from'} );
+		$im->rectangle( $xb-3, $yb+2, $xb-4, $yb+4, $colours->{'blob_to'} );
+	} else {
+		$im->setlinewidth(0.18);
+		$im->line( $xa, $ya+3, $xb-3, $yb+3, @{$COLOURS{'black'}} );
+		$im->setcolour( @{$COLOURS{'white'}} );
+		$im->circle( $xb-3, $yb+3, 1, 1);
+		$im->setcolour( @{$COLOURS{'black'}} );
+		$im->circle( $xa, $ya+3, 1, 1);
+		$im->circle( $xb-3, $yb+3, 1, 0);
+	}
+}
+
+sub _imageDimsSet {
+	$colWidth = 200;
+	$rowHeight = 12;
+
+	$nOffset = 40;
+	$sOffset = 10;
+	$wOffset = 20;
+	$eOffset = 1;
+}
+
+sub _psDimsSet {
+	$colWidth = 150;
+	$rowHeight = 12;
+
+	$nOffset = 60;
+	$sOffset = 40;
+	$wOffset = 40;
+	$eOffset = 30;
+}
+
+sub TRACE {}
+sub LOG {}
+
+1;
+
+=head1 NAME
+
+Module::Dependency::Graph - creates visual dependency charts and accessible text versions
+
+=head1 SYNOPSIS
+
+	use Module::Dependency::Grapher;
+	Module::Dependency::Grapher::setIndex( '/var/tmp/dependence/unified.dat' );
+	Module::Dependency::Grapher::makeImage( 'both', ['Foo::Bar', 'Foo::Baz'], '/home/www/foodep.png', {Format => 'png'} );
+	Module::Dependency::Grapher::makePs( 'both', ['Foo::Bar', 'Foo::Baz'], '/home/www/foodep.eps' );
+	Module::Dependency::Grapher::makeText( 'both', ['Foo::Bar', 'Foo::Baz'], '/home/www/foodep.txt', {NoLegend => 1} );
+	Module::Dependency::Grapher::makeHtml( 'both', ['Foo::Bar', 'Foo::Baz'], '/home/www/foodep.ssi', {NoLegend => 1} );
+
+=head1 DESCRIPTION
+
+=over 4
+
+=item Module::Dependency::Grapher::setIndex( $filename );
+
+This tells the module where the database is. It doesn't affect the other
+modules - they have their own setIndex routines. The default is /var/tmp/dependence/unified.dat
+
+=item Module::Dependency::Grapher::makeImage( $kind, $seeds, $filename, $options );
+
+Draws an image showing the dependency links between a set of items. The 'tree' of dependencies is
+started at the item or items named in the $seeds array reference. The code then links to all
+the parent and/or child dependencies of those seeds. And repeat for those items, etc.
+
+$kind is 'parent', 'child' or 'both'. This parameter tells the code whether to plot (respectively)
+things that depend upon the seed items, things that the seed items depend upon, or both directions.
+
+$seeds is a reference to an array of item names
+
+$filename is the file to which the output should go. Use '-' for STDOUT. Clobbers existing files.
+
+See below for the options. See README.EXAMPLES too.
+
+=item Module::Dependency::Grapher::makePs( $kind, $seeds, $filename, $options );
+
+As makeImage() but does it in PostScript or EPS. EPS is the default. See below for the options. See README.EXAMPLES too.
+
+=item Module::Dependency::Grapher::makeText( $kind, $seeds, $filename, $options );
+
+Creates a plain-text rendition of the dependency heirarchy. As it's only ASCII it can't plot
+the individual links between items, so it simplifies and presents only each level of the 
+tree as a whole.
+
+Parameters are as for makeImage()
+
+See below for options. See README.EXAMPLES too.
+
+=item Module::Dependency::Grapher::makeHtml( $kind, $seeds, $filename, $options );
+
+Creates an HTML fragment rendition of the dependency heirarchy. As it's only text it can't plot
+the individual links between items, so it simplifies and presents only each level of the 
+tree. Information comes out in a table, and the whole fragment uses CLASS attributes so that you
+can apply CSS to it. Typical fragment is:
+
+	<div class="MDGraph"><h2>Dependencies for all scripts</h2>
+	<h4>Grapher.pm 1.7 - Fri Jan 11 00:00:56 2002</h4>
+	Key:<br />Parent indicates parent dependencies<br />
+		**** indicates the item(s) from which the relationships are drawn<br />
+	    Child are child dependencies<br />
+
+	<table class="MDGraphTable">
+	<tr><th>Kind</th><th>Items</th></tr>
+	<tr><td class="MDGraphSeed">****</td><td class="MDGraphSeed">x.pl, y.pl</td></tr>
+	<tr><td class="MDGraphChild">Child</td><td class="MDGraphChild">a, b, c</td></tr>
+	</table>
+	</div>
+
+Parameters are as for makeImage()
+
+See below for options. See README.EXAMPLES too.
+
+=back
+
+=head2 OPTIONS
+
+Options are case-sensitive, and you pass them in as a hash reference, e.g.
+
+	Module::Dependency::Grapher::makeImage( $kind, $objlist, $IMGFILE, {Title => $title, Format => 'GIF'} );
+
+These are the recognized options:
+
+=over 4
+
+=item Title
+
+Sets the title of the output to whatever string you want. Displayed at the top.
+
+=item Format
+
+The output image format - can be (case-insensitive) GIF, PNG, GD, or JPG - but some may not be available
+depending on how your local copy of libgd was compiled. You'll need to examine you local GD setup (PNG is
+pretty standard thesedays though) Default is PNG.
+
+The makePs() method recognizes only 'EPS' or 'PS' as format options. Default is 'EPS'.
+
+=item NoLegend
+
+If true, don't print the 'legend' box/text
+
+=item NoVersion
+
+If true, don't print the version/date line.
+
+=item Colour
+
+Used by makePs() only - if 1 it makes a colour image, if 0 it makes a greyscale image. Default is 1.
+
+=item Font
+
+sed by makePs() only. Set the font used in the drawing. Default is 'Helvetica'.
+
+=back
+
+=head1 PREREQUISITES
+
+GD. If you want to use the makePs() method you'll need PostScript::Simple installed.
+
+=head1 VERSION
+
+$Id: Grapher.pm,v 1.12 2002/01/21 15:40:13 piers Exp $
+
+=cut
+
+

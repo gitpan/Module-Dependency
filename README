@@ -1,0 +1,84 @@
+Module::Dependency Documentation
+------------------ -------------
+
+Overview
+--------
+
+This is a suite of modules (and a set of helper programs that you may use 
+if you wish) that allow you to investigate the dependencies between
+perl programs and modules. This is primarily aimed at the programmer/
+developer audience.
+
+What are dependencies?
+---- --- -------------
+
+When your foo.pl program says 'use CGI;' that program /depends/ upon 
+CGI.pm - I'll refer to this as 'CGI is a child dependency of foo.pl',
+and similarly 'foo.pl is a parent dependency of CGI'. These modules
+work with all the parent and child dependencies between a collection
+of perl files that you specify.
+
+How does it work?
+--- ---- -- -----
+
+Basically the first thing you do is create a database by feeding a list
+of directories to Module::Dependency::Indexer::makeIndex()
+These directories are recursively searched using File::Find to examine
+all the .pl, .plx and .pm files. Parent and child dependencies are 
+stored, as are a few other bits of information. One database is created
+for all the files found in that run.
+
+Making the database is quite expensive so the idea is to create the
+database once, and use it many times. Typical values are 5-10 seconds to
+index a reasonably large site_perl directory. You can create many 
+different database files should you need to.
+
+You use functions in Module::Dependency::Info to get information out
+of the database.
+
+You use functions in Module::Dependency::Grapher to visualize the links
+between items. It can output in plain text, HTML fragment, PostScript,
+Encapsulated PostScript or any format your copy of GD supports.
+
+In using GD for output, the available output formats
+depend upon your local copy of GD, but PNG should be available on all
+installations. GIF and JPEG are also possible. This module can also
+produce basic plain text output and HTML fragment output.
+
+See the README.EXAMPLES file.
+
+The Grapher output is fast enough to use in a CGI application, even with
+a database containing many hundreds of items. It was written with the 
+intention of going on an intranet software engineers support site. A
+working CGI is included. See README.EXAMPLES.
+
+Installation
+------------
+
+Read the INSTALL file.
+
+More Information
+---- -----------
+
+You can probably get started using the programs bundled with this 
+package - see README.COMMANDS - so you don't have to write any code.
+
+For more advanced or specialist usages you'll want to know how to use the
+modules - see README.MODULES for that.
+
+For examples see the README.EXAMPLES file.
+
+Improvements
+------------
+
+Please tell me about any bugs you find, or any suggestions for
+improvements.
+
+pause@selsyn.co.uk (P Kent)
+
+Copyright and License
+--------- --- -------
+
+This software is copyright 2001-2002 P Kent.
+This is free software; you can redistribute it and/or modify it under
+the same terms as Perl itself.
