@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# $Id: grapher.plx,v 1.10 2002/02/28 03:25:59 piers Exp $
+# $Id: grapher.plx,v 1.11 2002/07/07 00:28:00 piers Exp $
 
 use strict;
 use lib './lib';
@@ -9,7 +9,7 @@ use Module::Dependency::Grapher;
 use Data::Dumper;
 
 ### EDIT THIS LINE - New versions of GD do not support GIF
-### Set this to 'GIF' or 'PNG' depending on what your GD can handle
+### Set this to 'GIF' or 'PNG' depending on what your GD can handle, or in fact use any of the available formats
 ### This program will try to guess the format from the filename: this
 ### value is used when no guess can be made
 use constant DEFAULT_FORMAT => 'PNG';
@@ -24,7 +24,7 @@ $kind
 getopts('hto:m:n:s:rbf:');
 if ($opt_h) { usage(); }
 
-($VERSION) = ('$Revision: 1.10 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 1.11 $' =~ /([\d\.]+)/ );
 $IMGFILE = shift || usage();
 
 Module::Dependency::Grapher::setIndex( $opt_o ) if $opt_o;
@@ -74,6 +74,8 @@ if ($opt_f) {
 		$format = 'EPS';
 	} elsif ($IMGFILE =~ /\.txt$/i) {
 		$format = 'TEXT';
+	} elsif ($IMGFILE =~ /\.svg$/i) {
+		$format = 'SVG';
 	} elsif ($IMGFILE =~ /\.s?html?$/i) {
 		$format = 'HTML';
 	} else {
@@ -87,6 +89,8 @@ if ( $format eq 'TEXT' ) {
 	Module::Dependency::Grapher::makeText( $kind, $objlist, $IMGFILE, {Title => $title, IncludeRegex => $opt_m, ExcludeRegex => $opt_n});
 } elsif ( $format eq 'HTML' ) {
 	Module::Dependency::Grapher::makeHtml( $kind, $objlist, $IMGFILE, {Title => $title, IncludeRegex => $opt_m, ExcludeRegex => $opt_n});
+} elsif ( $format eq 'SVG' ) {
+	Module::Dependency::Grapher::makeSvg( $kind, $objlist, $IMGFILE, {Title => $title, IncludeRegex => $opt_m, ExcludeRegex => $opt_n});
 } elsif ( $format eq 'PS' ) {
 	Module::Dependency::Grapher::makePs( $kind, $objlist, $IMGFILE, {Title => $title, Format => 'PS', IncludeRegex => $opt_m, ExcludeRegex => $opt_n});
 } elsif ( $format eq 'EPS' ) {
@@ -136,6 +140,7 @@ grapher - display Module::Dependency info in a graphical manner
 	   'html' - Output with the makeHtml method to emit an HTML fragment.
 	   'gif'/'png' - Output an image.
 	   'ps'/'eps' - Output (Encapsulated) PostScript (requires PostScript::Simple)
+	   'svg' - Scalable Vector Graphic
 	-o the location of the datafile (default is 
 	   /var/tmp/dependence/unified.dat)
 	-m Optional regular expression - only show dependencies that match this expression
@@ -165,7 +170,7 @@ to give parent and/or child relationships.
 
 =head1 VERSION
 
-$Id: grapher.plx,v 1.10 2002/02/28 03:25:59 piers Exp $
+$Id: grapher.plx,v 1.11 2002/07/07 00:28:00 piers Exp $
 
 =cut
 

@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: cgidepend.plx,v 1.8 2002/05/19 19:29:31 piers Exp $
+# $Id: cgidepend.plx,v 1.10 2002/07/07 00:42:26 piers Exp $
 
 ### YOU MAY NEED TO EDIT THE SHEBANG LINE!
 
@@ -20,17 +20,26 @@ use constant STYLESHEET_LOC => '/depend.css';
 ### EDIT THIS OPTIONALLY - this value will be prepended to the incoming 'datafile' parameter, allowing you to restrict it to a single directory
 use constant DATADIR => '';
 
-### EDIT THIS OPTIONALLY - if true then we'll print a clientside imagemap. if false, no imagemap
+### EDIT THIS OPTIONALLY - if true then we'll print a clientside imagemap/make SVGs clickable. if false, no imagemap
 use constant DOES_IMAGEMAP => 1;
+
+### EDIT THIS OPTIONALLY - set to 'object' or 'embed'. the default way of embedding an SVG image into the page. Apparently we _should_ use object but many browsers can't handle that
+use constant HOW_EMBED => 'object';
 
 use CGI;
 use Module::Dependency::Info;
 use Module::Dependency::Grapher;
 
-use vars qw/$VERSION $cgi/;
+use vars qw/$VERSION $cgi %MIMELUT/;
 
-($VERSION) = ('$Revision: 1.8 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 1.10 $' =~ /([\d\.]+)/ );
 $cgi = new CGI;
+%MIMELUT = (
+	'GIF' => 'image/gif',
+	'PNG' => 'image/png',
+	'JPG' => 'image/jpeg',
+	'SVG' => 'image/svg+xml',
+);
 
 eval {
 	# no parameters... print the usage
@@ -52,7 +61,9 @@ eval {
 	my $kind = $cgi->param('kind') || 'both';
 	my $embed = $cgi->param('embed');
 	my $format = $cgi->param('format') || DEFAULT_FORMAT;
-	$format =~ s/[^\w]//g;
+	$format =~ s/\W//g;
+	$format = uc($format);
+	my $howembed = lc($cgi->param('howembed')) || HOW_EMBED;
 	
 	if ($datafile) {
 		die("Unlikely characters in filename") if ($datafile =~ m/[^\w\/\:\.-]/);
@@ -81,16 +92,28 @@ eval {
 	
 	my $title;
 	if ($kind == 'both') {
-		$title = "Parent & child dependencies for package$plural $objliststr";
+		$title = "Parent + child dependencies for package$plural $objliststr";
 	} elsif ($kind == 'parent') {
 		$title = "Parent dependencies for package$plural $objliststr";
 	} else {
 		$title = "Dependencies for package$plural $objliststr";
 	}
 
+	my $scripturl = $ENV{SCRIPT_URL} || $ENV{SCRIPT_NAME};
+	my $cgi_this_time = "$scripturl?go=1&amp;kind=$kind&amp;format=$format&amp;datafile=$datafile&amp;allscripts=$allscripts&amp;re=$re&amp;xre=$xre&amp;howembed=$howembed";
+
 	if ( $embed == 1 ) {
-		print CGI::header("image/" . lc($format) );
-		Module::Dependency::Grapher::makeImage( $kind, \@objlist, '-', {Title => $title, Format => $format, IncludeRegex => $re, ExcludeRegex => $xre} );
+		print CGI::header( $MIMELUT{$format} );
+		
+		my @imopts;
+		if (DOES_IMAGEMAP) { @imopts = ('HrefFormat', "$cgi_this_time&amp;seed=%s"); }
+		my @args = ( $kind, \@objlist, '-', {Title => $title, Format => $format, IncludeRegex => $re, ExcludeRegex => $xre, @imopts} );
+
+		if ($format eq 'SVG') {
+			Module::Dependency::Grapher::makeSvg( @args );
+		} else {
+			Module::Dependency::Grapher::makeImage( @args );
+		}
 	} else {
 		print CGI::header('text/html');
 		if ( $embed == 0 ) {
@@ -98,19 +121,22 @@ eval {
 			print qq(<html>\n<head><title>Dependencies for $title</title>\n<link rel="stylesheet" href=") . STYLESHEET_LOC . qq(" type="text/css">\n</head>\n<body>\n);
 		}
 		
-		my $scripturl = $ENV{SCRIPT_URL} || $ENV{SCRIPT_NAME};
-		my $cgi_this_time = "$scripturl?go=1&amp;kind=$kind&amp;format=$format&amp;datafile=$datafile&amp;allscripts=$allscripts&amp;re=$re&amp;xre=$xre";
-		print qq(<h1>Dependency Information for $seed</h1><hr />
-<h2>Plot of relationships</h2>
-<img src="$cgi_this_time&amp;seed=$seed&amp;embed=1" alt="Dependency tree image (client-side imagemap)" ) . ( DOES_IMAGEMAP ? 'usemap="#dependence" ' : '' ) . q(/>
-);
-		
-		# $rv contains the imagemap for this run; the regexp simply inserts the right URL
-		my $rv = Module::Dependency::Grapher::makeHtml( $kind, \@objlist, '-', {Title => $title, NoVersion => 1, NoLegend => 1, IncludeRegex => $re, ExcludeRegex => $xre, ImageMap => 'return'});
-		if (DOES_IMAGEMAP) {
-			$rv =~ s/<!-- PACK (\S+) --><area href=""/<!-- PACK $1 --><area href="$cgi_this_time&amp;seed=$1"/g;
-			print $rv;
+		print qq(<h1>Dependency Information for $seed</h1><hr />\n<h2>Plot of relationships</h2>\n);
+
+		if ($format eq 'SVG') {
+			if ($howembed eq 'object') {
+				print qq(<object type="image/svg+xml" data="$cgi_this_time&amp;seed=$seed&amp;embed=1" name="dependsvg" width="95%"></object>\n);
+			} else {
+				print qq(<embed type="image/svg+xml" src="$cgi_this_time&amp;seed=$seed&amp;embed=1" width="95%" name="dependsvg" pluginspage="http://www.adobe.com/svg/viewer/install/" />\n);
+			}
+		} else {
+			print qq(<img src="$cgi_this_time&amp;seed=$seed&amp;embed=1" alt="Dependency tree image (client-side imagemap)" ) . ( DOES_IMAGEMAP ? 'usemap="#dependence" ' : '' ) . qq(/>\n);
 		}
+		print qq(<p>Alternatively, you can <a href="$cgi_this_time&amp;seed=$seed&amp;embed=1" alt="Graphical dependency tree for $title" target="_blank">view this dependency tree in a new window</a>.</p>\n);
+		
+		my @imopts;
+		if (DOES_IMAGEMAP && $format ne 'SVG') { @imopts = ('ImageMap', 'print', 'HrefFormat', "$cgi_this_time&amp;seed=%s"); }
+		Module::Dependency::Grapher::makeHtml( $kind, \@objlist, '-', {Title => $title, NoVersion => 1, NoLegend => 1, IncludeRegex => $re, ExcludeRegex => $xre, @imopts});
 
 		unless ( $allscripts ) {
 			foreach ( @objlist ) {
@@ -182,6 +208,10 @@ Must be true - used to ensure we have been called correctly
 
 If 1, returns an image, if 0 returns the HTML, if 2 returns the HTML with no header/footer, suitable for including in another web page.
 
+=item howembed
+
+'object' (the default, set as a constant) or 'embed' - if using an SVG image, specify how you want the image embedded in the page.
+
 =item format
 
 Optionally, specifically ask for one kind of image format (default is 'PNG', but may be 
@@ -226,16 +256,19 @@ the page, and the other returns a PNG (or GIF) that the page embeds.
 The HTML mode basically gives you all the dependency info for the item, and the image shows
 it to you in an easy to understand way.
 
-=head1 NOTE
+=head1 NOTES
 
-This program build a client-side imagemap which allows you to click on an item in the image and make that the
+This program can build a client-side imagemap which allows you to click on an item in the image and make that the
 root of the dependency tree. If a robot, spider or similar web-crawling program finds your CGI it may decide to follow
 all the links it can find, including those in the imagemap. Personally I don't find this a problem, but it's
 just something to be aware of. You can disable the imagemap by setting the DOES_IMAGEMAP constant to zero.
+This also disable clickable text in SVG images, if used.
+
+If you want to change the default values of anything, edit this script and look at the top of the file.
 
 =head1 VERSION
 
-$Id: cgidepend.plx,v 1.8 2002/05/19 19:29:31 piers Exp $
+$Id: cgidepend.plx,v 1.10 2002/07/07 00:42:26 piers Exp $
 
 =cut
 

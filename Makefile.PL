@@ -1,6 +1,6 @@
 use ExtUtils::MakeMaker;
 
-# $Id: Makefile.PL,v 1.4 2002/04/28 23:28:48 piers Exp $
+# $Id: Makefile.PL,v 1.5 2002/09/12 00:42:41 piers Exp $
 
 WriteMakefile(
 	AUTHOR		=> 'P Kent (pause@selsyn.co.uk)',
@@ -18,5 +18,7 @@ WriteMakefile(
 				File::Spec => 0,
 				Safe => 0,
 			},
+	EXE_FILES	=> [ qw(cgidepend.plx  dumper.plx  grapher.plx  indexer.plx) ],
+	PREFIX		=> '/usr/local/dependency',
 );
 

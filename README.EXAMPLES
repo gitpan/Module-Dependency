@@ -41,6 +41,15 @@ HTML equivalents. The visual styling is done with CSS so that there is
 no hard-coded BGCOLOR or similar attributes. See example.css for the
 classes used, or view the HTML source.
 
+SVG
+---
+
+If you have the SVG.pm module you can create images in SVG format too.
+Files example1.svg, example2.svg and example3.svg are SVG versions of the
+images example[123].gif mentioned above. You may render these images in
+a number of ways, although most people will find installing an SVG
+plug-in for their web browser easiest. I personally use the Adobe plug-in.
+
 CGI
 ---
 
@@ -48,4 +57,5 @@ An example installation of the CGI is at:
 http://www.selsyn.co.uk/depend.shtml
 But note that this machine is not hugely powerful so it may take a
 few seconds to build the image. Your hardware will probably be 
-quicker.
+quicker. For various reasons this may not be running the latest
+software.

@@ -1,5 +1,5 @@
 package Module::Dependency::Grapher;
-
+use strict;
 use Module::Dependency::Info;
 
 use vars qw/$VERSION @TIERS %LOOKUP %COLOURS
@@ -7,7 +7,7 @@ use vars qw/$VERSION @TIERS %LOOKUP %COLOURS
 $nOffset $eOffset $sOffset $wOffset
 /;
 
-($VERSION) = ('$Revision: 1.18 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 1.21 $' =~ /([\d\.]+)/ );
 
 %COLOURS = (
 	type => [0,0,0],
@@ -95,20 +95,17 @@ sub makeHtml {
 	# create the imagemap
 	my $rv = 1;
 	if ( $options->{ImageMap} ) {
+		my $code = $options->{ImageMapCode} || \&_imgmapdefault;
+		my $frmt = $options->{HrefFormat} || '';
 		_imageDimsSet();
 		if ($maxitems < 8) {
 			$rowHeight = 8*$rowHeight*1.5 / $maxitems;
 		} elsif ($maxitems < 16) {
 			$rowHeight = 16*$rowHeight / $maxitems;
 		}
-		_packObjects( $rowHeight * $maxitems );
+		_packObjects( $rowHeight * $maxitems, 5 );
 		my $str = qq(<map name="dependence">\n);
-		while (my ($k, $v) = each(%LOOKUP)) {
-			my $alt = "Root the dependency tree on '$v->{package}'";
-			$str .= qq(<!-- PACK $v->{package} --><area href="" shape="rect" coords=")
-			. int($v->{'x'} -3) . ',' . int($v->{'y'} -1) . ',' . int($v->{'x2'} +3) . ',' . int($v->{'y'} +9)
-			. qq(" alt="$alt" title="$alt" />\n);
-		}
+		foreach my $v (values %LOOKUP) { $str .= $code->($v, $frmt); }
 		$str .= qq(</map>\n);
 				
 		if (lc($options->{ImageMap}) eq 'print') {
@@ -121,6 +118,15 @@ sub makeHtml {
 	close HTML;
 
 	return $rv;
+}
+
+sub _imgmapdefault {
+	my ($v, $frmt) = @_;
+	my $pack = $v->{'package'};
+	my $alt = "Root the dependency tree on '$pack'";
+	return qq(<!-- PACK $pack --><area href=") . sprintf($frmt, $pack) . q(" shape="rect" coords=")
+	. int($v->{'x'} -3) . ',' . int($v->{'y'} -1) . ',' . int($v->{'x2'} +3) . ',' . int($v->{'y'} +9)
+	. qq(" alt="$alt" title="$alt" />\n);
 }
 
 sub makeImage {
@@ -155,7 +161,7 @@ sub makeImage {
 	$im->colorAllocate( 255,255,255 );
 	while (my ($k, $v) = each %COLOURS) { $colours->{ $k } = $im->colorAllocate( @$v ); }
 	
-	_packObjects($imgHeight);
+	_packObjects($imgHeight, 5); # gdTinyFont has 5 pixel wide characters
 	_linkObjects($im, $colours);
 	_labelObjects($im, $colours);
 	
@@ -175,6 +181,64 @@ sub makeImage {
 	} elsif ($type eq 'JPG') { print IMG $im->jpg;
 	} elsif ($type eq 'GD') { print IMG $im->gd;
 	} else { die("Unrecognized image type $type"); }
+	close IMG;
+}
+
+# SVG has an origin at the top-left, like GD, and an SVG image can use unitless coordinates: so we can borrow a lot from makeImage()
+sub makeSvg {
+	require SVG;
+	import SVG;
+
+	my ($kind, $seeds, $filename, $options) = @_;
+	my $imgtitle = $options->{'Title'} || 'Dependency Chart';
+	
+	my ($maxitems, $pushed) = _makeCols($kind, $seeds, $options->{IncludeRegex}, $options->{ExcludeRegex});
+	_imageDimsSet();
+
+	LOG( "Making SVG to $filename" );
+	
+	if ($maxitems < 8) {
+		$rowHeight = 8*$rowHeight*1.5 / $maxitems;
+	} elsif ($maxitems < 16) {
+		$rowHeight = 16*$rowHeight / $maxitems;
+	}
+	
+	my $imgWidth = $colWidth * (scalar(@TIERS) < 3 ? 3 : scalar(@TIERS));
+	my $imgHeight = $rowHeight * $maxitems;
+	
+	my $realImgWidth = $imgWidth + $wOffset + $eOffset;
+	my $realImgHeight = $imgHeight + $nOffset + $sOffset;
+	LOG( "Rows are $rowHeight px, maxitems is $maxitems, image is $realImgWidth * $realImgWidth" );
+
+	my $im = new SVG('viewBox' => ('0 0 '.($imgWidth+$wOffset+$eOffset).' '.($imgHeight+$nOffset+$sOffset)), 'preserveAspectRatio' => 'xMidYMid', '-indent' => "\t");
+
+	# set up image object
+	my $colours;
+	while (my ($k, $v) = each %COLOURS) { $colours->{ $k } = sprintf( '#%2.2x%2.2x%2.2x', @$v ); }
+	
+	$im->rectangle( 'x' => 0, 'y' => 0, 'width' => ($imgWidth+$wOffset+$eOffset), 'height' => ($imgHeight+$nOffset+$sOffset), stroke => $colours->{'black'}, fill => 'none' );
+	_packObjects($imgHeight, 5);
+	_linkObjects($im, $colours);
+
+	# are things clickable? Bit of a kludge, this
+	$colours->{'_HREF_FORMAT'} = $options->{'HrefFormat'};
+	_labelObjects($im, $colours);
+	delete $colours->{'_HREF_FORMAT'};
+	
+	# add legend and prettiness
+	TRACE( "Drawing legend etc" );
+
+	$im->text('x' => 5, 'y' => 12, 'fill' => $colours->{'title1'}, 'style' => { 'font-size' => '12px' })->cdata($imgtitle);
+	$im->text('x' => 5, 'y' => 23, 'fill' => $colours->{'title1'}, 'style' => { 'font-size' => '9px' })->cdata("Grapher.pm $VERSION - " . localtime()) unless $options->{'NoVersion'};
+	_drawLegend( $im, $colours, $realImgWidth - 160 - $eOffset, 3 ) unless $options->{'NoLegend'};
+	
+	$im->title(id=>'document-title')->cdata($imgtitle);
+	$im->desc(id=>'document-desc')->cdata('This image shows dependency relationships between perl programs and modules');
+
+	TRACE( "Printing SVG" );
+	local *IMG;
+	open(IMG, "> $filename") or die("Can't open $filename for image write: $!");
+	print IMG $im->xmlify;
 	close IMG;
 }
 
@@ -211,7 +275,7 @@ sub makePs {
 	$p->setlinewidth(0.5);
 	$p->setfont( $font, 9 );
 	
-	_packObjects($imgHeight);
+	_packObjects($imgHeight, 5.5);
 	_linkObjects($p);
 	$p->setcolour( @{$COLOURS{'type'}} );
 	_labelObjects($p);
@@ -336,7 +400,7 @@ sub _makeCols {
 
 # work out _where_ we're going to put the items
 sub _packObjects {
-	my ($imgHeight) = @_;
+	my ($imgHeight, $charwidth) = @_;
 	TRACE( "Packing objects" );
 	for my $x (0 .. $#TIERS) {
 		my $y = 0;
@@ -349,7 +413,7 @@ sub _packObjects {
 			unless ( exists $obj->{'x'} ) {
 				$obj->{'x'} = $cx;
 				$obj->{'y'} = $cy;
-				$obj->{'x2'} = $cx + 1 + 5 * length($obj->{'package'}); # gdTinyFont has characters 5 pixels wide
+				$obj->{'x2'} = $cx + 1 + $charwidth * length($obj->{'package'}); # gdTinyFont has characters 5 pixels wide
 			}
 			$y++;
 		}
@@ -386,15 +450,25 @@ sub _labelObjects {
 	}
 }
 
+# ! behaves differently for each image type
 sub _drawLegend {
 	my ($im, $colours, $x, $y) = @_;
-
-	$im->rectangle( $x, $y, $x+138, $y+37, $colours->{'border'} );
+	my $type = ref($im);
+	
+	if ($type =~ m/^GD/) {
+		$im->rectangle( $x, $y, $x+138, $y+37, $colours->{'border'} );
+	} elsif ($type =~ m/SVG/) {
+		$im->rectangle( 'x' => $x, 'y' => $y, 'width' => 138, 'height' => 37, stroke => 'none', stroke => $colours->{'border'}, fill => 'none' );
+	}
 	$x += 4;
 	$y += 3;
 	
 	_drawText( $im, $colours, $x, $y, 'Legend');
-	$im->line( $x, $y+8, $x+30, $y+8, $colours->{'type'} );
+	if ($type =~ m/^GD/) {
+		$im->line( $x, $y+8, $x+30, $y+8, $colours->{'type'} );
+	} elsif ($type =~ m/SVG/) {
+		$im->line( x1 => $x, y1 => $y+8, x2 => $x+30, y2 => $y+8, stroke => $colours->{'type'} );
+	}
 	$y += 12;
 	_drawLink( $im, $colours, $x+31, $y, 100+$x, $y);
 	_drawText( $im, $colours, $x, $y, 'Foo.pl');
@@ -419,30 +493,49 @@ sub _drawPsLegend {
 	$p->box( $x, $y-1, $x+120, $y+34 );
 }
 
+# ! behaves differently for each image type
 sub _drawText {
 	my ($im, $colours, $x, $y, $text) = @_;
-	if (defined $colours ) {
+	my $type = ref($im);
+#	TRACE("_drawText for $type");
+
+	if ($type =~ m/^GD/) {
 		$im->string(gdTinyFont(), $x, $y, $text, $colours->{'type'});
-	} else {
+	} elsif ($type =~ m/^PostScript/) {
 		$im->text($x, $y, $text);
+	} elsif ($type =~ m/^SVG/) {
+		if ($colours->{'_HREF_FORMAT'}) {
+			$im->anchor(-href => sprintf($colours->{'_HREF_FORMAT'}, $text))->text('x' => $x, 'y' => $y+5.5, 'fill' => $colours->{'type'}, 'style' => { 'font-size' => '8px', 'font-family' => 'Courier, Monaco, monospaced'})->cdata($text);
+		} else {
+			$im->text('x' => $x, 'y' => $y+5.5, 'fill' => $colours->{'type'}, 'style' => { 'font-size' => '8px', 'font-family' => 'Courier, Monaco, monospaced'})->cdata($text);
+		}
 	}
 }
 
+# ! behaves differently for each image type
 sub _drawLink {
 	my ($im, $colours, $xa, $ya, $xb, $yb) = @_;
+	my $type = ref($im);
+#	TRACE("_drawLink for $type");
 	
-	if (defined $colours) {
+	if ($type =~ m/^GD/) {
 		$im->line( $xa, $ya+3, $xb-3, $yb+3, $colours->{'links'} );
 		$im->rectangle( $xa, $ya+2, $xa+1, $ya+4, $colours->{'blob_from'} );
 		$im->rectangle( $xb-3, $yb+2, $xb-4, $yb+4, $colours->{'blob_to'} );
-	} else {
-		$im->setlinewidth(0.18);
+	} elsif ($type =~ m/^PostScript/) {
+		$im->setlinewidth(0.22);
 		$im->line( $xa, $ya+3, $xb-3, $yb+3, @{$COLOURS{'black'}} );
 		$im->setcolour( @{$COLOURS{'white'}} );
 		$im->circle( $xb-3, $yb+3, 1, 1);
 		$im->setcolour( @{$COLOURS{'black'}} );
 		$im->circle( $xa, $ya+3, 1, 1);
 		$im->circle( $xb-3, $yb+3, 1, 0);
+	} elsif ($type =~ m/^SVG/) {
+		$im->line( x1 => $xa, y1 => $ya+3, x2 => $xb-3, y2 => $yb+3, stroke => $colours->{'links'} );
+		$im->rectangle( 'x' => $xa, 'y' => $ya+2, 'width' => 2, 'height' => 2, stroke => 'none', fill => $colours->{'blob_from'} );
+		$im->rectangle( 'x' => $xb-4, 'y' => $yb+2, 'width' => 2, 'height' => 2, stroke => 'none', fill => $colours->{'blob_to'} );
+	} else {
+		die 'This indicates that the object model has changed somewhere. Should not happen.';
 	}
 }
 
@@ -544,7 +637,7 @@ can apply CSS to it. Typical fragment is:
 
 Parameters are as for makeImage(). 
 
-See below for options - especially the ImageMap option, which allows this method to return an HTML client-side
+See below for options - especially the ImageMap (and related) options, which allows this method to return an HTML client-side
 imagemap. See README.EXAMPLES too.
 
 =back
@@ -599,19 +692,39 @@ sed by makePs() only. Set the font used in the drawing. Default is 'Helvetica'.
 
 =item ImageMap
 
-Used by makeHtml() only - if set to 'print' it will print a skeleton imagemap to the output file of this form:
+Used by makeHtml() only - if set to 'print' it will print a skeleton imagemap to the output file; if set to 'return' then the imagemap text
+is the return value of makeHtml() so that the caller can process the string further.
+
+An imagemap looks like this example, but you can change the href attributes using the HrefFormat option (see below) so that they match what your CGI
+program is expecting.
 
 	<map name="dependence">
 	<!-- PACK a --><area href="" shape="rect" coords="217,110,229,122" alt="Root dependency tree on a" title="Root dependency tree on a">
 	<!-- PACK x.pl --><area href="" shape="rect" coords="17,110,44,122" alt="Root dependency tree on x.pl" title="Root dependency tree on x.pl">
 	</map>
 
-Note that the href attributes are deliberately left empty so you need to go through the map and insert the right URL. The PACK comment
+If you want to totally change the format of each 'area' element see the ImageMapCode option below.
+
+Note that the href attributes are deliberately left empty, for users of the 'return' method to easily post-process the string. The PACK comment
 at the start of each line is provided to tell you what the package or scriptname is. The imagemap corresponds to the image that _would_
 be produced by makeImage() if it were given the same arguments.
 
-If set to 'return' then makeHtml() will return this same imagemap string to the caller so that they can process it further. See the
-bundled 'cgidepend.plx' CGI program to see a use for this imagemap.
+See the bundled 'cgidepend.plx' CGI program to see a use for this imagemap.
+
+=item ImageMapCode
+
+Used by makeHtml() only - must be a code reference. Called once for each 'area' required. The first argument is the package name
+that the 'area' corresponds to, 'Foo::Bar' or 'baz.pl' for example. The second argument is the current HrefFormat setting, but you
+may ignore that, seeing as you're going to be writing the entire element. The default coderef creates the 'area' elements as shown above
+and respects the HrefFormat option.
+
+=item HrefFormat
+
+Used by makeHtml() and makeSvg() only - default is ''. A sprintf() formatting string used to format the 'href'
+attribute in EACH 'area' element of the imagemap, or the href of the anchors in SVG output.
+E.g. '?myparam=%s' would create an href of '?myparam=Foo'.
+
+If empty (as is the default) then you get no clickable links in the SVG output.
 
 =back
 
@@ -627,6 +740,6 @@ Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Grapher.pm,v 1.18 2002/05/19 19:09:40 piers Exp $
+$Id: Grapher.pm,v 1.21 2002/09/12 00:38:04 piers Exp $
 
 =cut

@@ -38,7 +38,7 @@ of the database.
 
 You use functions in Module::Dependency::Grapher to visualize the links
 between items. It can output in plain text, HTML fragment, PostScript,
-Encapsulated PostScript or any format your copy of GD supports.
+Encapsulated PostScript, SVG or any format your copy of GD supports.
 
 In using GD for output, the available output formats
 depend upon your local copy of GD, but PNG should be available on all

@@ -26,6 +26,9 @@ example2.gif
 example3.gif
 example4.gif
 example5.gif
+example1.svg
+example2.svg
+example3.svg
 t/00base.t
 t/01info.t
 t/02indexer.t

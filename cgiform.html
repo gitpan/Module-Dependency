@@ -34,8 +34,15 @@ Optional: omit items matching this regex: <input type="text" name="xre" size="50
 
 <input type="hidden" name="go" value="1">
 
-<!-- *** You should probably change this to PNG - check with your local install of GD *** -->
-<input type="hidden" name="format" value="GIF">
+<!-- *** You should probably change this default to PNG - check with your local install of GD *** -->
+<br />
+Optional: Choose the image format - NOTE that some formats may not work on your system!
+<select name="format">
+<option value="GIF">GIF</option>
+<option value="PNG">PNG</option>
+<option value="SVG">SVG</option>
+<option value="JPG">JPEG</option>
+</select>
 
 <!-- *** Point this to the datafile you wish to use, or none to use the default *** -->
 <input type="hidden" name="datafile" value="/home/piers/src/dependency/build/unified.dat">

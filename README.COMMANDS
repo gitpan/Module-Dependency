@@ -65,6 +65,10 @@ SYNOPSIS
         If 1, returns an image, if 0 returns the HTML, if 2 returns the HTML
         with no header/footer, suitable for including in another web page.
 
+    howembed
+        'object' (the default, set as a constant) or 'embed' - if using an
+        SVG image, specify how you want the image embedded in the page.
+
     format
         Optionally, specifically ask for one kind of image format (default
         is 'PNG', but may be 'GIF' or whatever your GD allows)
@@ -102,8 +106,21 @@ DESCRIPTION
     The HTML mode basically gives you all the dependency info for the item,
     and the image shows it to you in an easy to understand way.
 
+NOTES
+    This program can build a client-side imagemap which allows you to click
+    on an item in the image and make that the root of the dependency tree.
+    If a robot, spider or similar web-crawling program finds your CGI it may
+    decide to follow all the links it can find, including those in the
+    imagemap. Personally I don't find this a problem, but it's just
+    something to be aware of. You can disable the imagemap by setting the
+    DOES_IMAGEMAP constant to zero. This also disable clickable text in SVG
+    images, if used.
+
+    If you want to change the default values of anything, edit this script
+    and look at the top of the file.
+
 VERSION
-    $Id: README.COMMANDS,v 1.8 2002/05/19 19:12:43 piers Exp $
+    $Id: README.COMMANDS,v 1.9 2002/09/12 00:37:58 piers Exp $
 
 NAME
     dumper - print basic Module::Dependency info
@@ -141,7 +158,7 @@ DESCRIPTION
     Data::Dumper.
 
 VERSION
-    $Id: README.COMMANDS,v 1.8 2002/05/19 19:12:43 piers Exp $
+    $Id: README.COMMANDS,v 1.9 2002/09/12 00:37:58 piers Exp $
 
 NAME
     grapher - display Module::Dependency info in a graphical manner
@@ -159,6 +176,7 @@ SYNOPSIS
                'html' - Output with the makeHtml method to emit an HTML fragment.
                'gif'/'png' - Output an image.
                'ps'/'eps' - Output (Encapsulated) PostScript (requires PostScript::Simple)
+               'svg' - Scalable Vector Graphic
             -o the location of the datafile (default is 
                /var/tmp/dependence/unified.dat)
             -m Optional regular expression - only show dependencies that match this expression
@@ -185,7 +203,7 @@ DESCRIPTION
     directions if required to give parent and/or child relationships.
 
 VERSION
-    $Id: README.COMMANDS,v 1.8 2002/05/19 19:12:43 piers Exp $
+    $Id: README.COMMANDS,v 1.9 2002/09/12 00:37:58 piers Exp $
 
 NAME
     indexer - make Module::Dependency index
@@ -215,5 +233,5 @@ DESCRIPTION
     using the -o option.
 
 VERSION
-    $Id: README.COMMANDS,v 1.8 2002/05/19 19:12:43 piers Exp $
+    $Id: README.COMMANDS,v 1.9 2002/09/12 00:37:58 piers Exp $
 
