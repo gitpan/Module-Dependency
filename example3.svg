@@ -28,7 +28,7 @@
 		<text x="420" y="117.5" style="font-family: Courier, Monaco, monospaced; font-size: 8px" fill="#000000">g</text>
 		<text x="420" y="153.5" style="font-family: Courier, Monaco, monospaced; font-size: 8px" fill="#000000">h</text>
 		<text x="5" y="12" style="font-size: 12px" fill="#400000">Dependencies for package b</text>
-		<text x="5" y="23" style="font-size: 9px" fill="#400000">Grapher.pm 1.20 - Thu Sep 12 01:37:15 2002</text>
+		<text x="5" y="23" style="font-size: 9px" fill="#400000">Grapher.pm 1.22 - Thu Sep 26 00:07:11 2002</text>
 		<rect width="138" stroke="#c0c0c0" x="460" height="37" y="3" fill="none" />
 		<text x="464" y="11.5" style="font-family: Courier, Monaco, monospaced; font-size: 8px" fill="#000000">Legend</text>
 		<line stroke="#000000" x1="464" y1="14" x2="494" y2="14" />

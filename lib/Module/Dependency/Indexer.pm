@@ -1,11 +1,11 @@
 package Module::Dependency::Indexer;
-
+use strict;
 use File::Find;
 use File::Spec;
 use Storable qw/nstore/;
 use vars qw/$VERSION $UNIFIED @NOINDEX $unified_file $check_shebang/;
 
-($VERSION) = ('$Revision: 1.12 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 1.13 $' =~ /([\d\.]+)/ );
 @NOINDEX = qw(.AppleDouble /test /CVS/);
 $check_shebang = 1;
 
@@ -101,7 +101,7 @@ sub _wanted {
 	} elsif (m/\.plx?$/) {
 		$is_perl_script++;
 	} elsif ($check_shebang && -f $fname && open(F, "<$fname")) {
-		my ($first_line) = <F>;
+		my $first_line = <F> || '';
 		close F;
 		if ($first_line =~ /^#!.*perl/) {
 			$is_perl_script++;
@@ -353,7 +353,7 @@ Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Indexer.pm,v 1.12 2002/09/12 00:20:49 piers Exp $
+$Id: Indexer.pm,v 1.13 2002/09/25 23:06:35 piers Exp $
 
 =cut
 

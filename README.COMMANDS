@@ -120,7 +120,7 @@ NOTES
     and look at the top of the file.
 
 VERSION
-    $Id: README.COMMANDS,v 1.9 2002/09/12 00:37:58 piers Exp $
+    $Id: README.COMMANDS,v 1.10 2002/09/25 23:07:31 piers Exp $
 
 NAME
     dumper - print basic Module::Dependency info
@@ -158,7 +158,7 @@ DESCRIPTION
     Data::Dumper.
 
 VERSION
-    $Id: README.COMMANDS,v 1.9 2002/09/12 00:37:58 piers Exp $
+    $Id: README.COMMANDS,v 1.10 2002/09/25 23:07:31 piers Exp $
 
 NAME
     grapher - display Module::Dependency info in a graphical manner
@@ -203,7 +203,7 @@ DESCRIPTION
     directions if required to give parent and/or child relationships.
 
 VERSION
-    $Id: README.COMMANDS,v 1.9 2002/09/12 00:37:58 piers Exp $
+    $Id: README.COMMANDS,v 1.10 2002/09/25 23:07:31 piers Exp $
 
 NAME
     indexer - make Module::Dependency index
@@ -233,5 +233,5 @@ DESCRIPTION
     using the -o option.
 
 VERSION
-    $Id: README.COMMANDS,v 1.9 2002/09/12 00:37:58 piers Exp $
+    $Id: README.COMMANDS,v 1.10 2002/09/25 23:07:31 piers Exp $
 

@@ -1,9 +1,10 @@
 package Module::Dependency::Info;
-
+use strict;
 use Storable qw/retrieve/;
 use vars qw/$VERSION $UNIFIED $unified_file $LOADED/;
+use constant MAX_DEPTH => 1000;
 
-($VERSION) = ('$Revision: 1.8 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 1.9 $' =~ /([\d\.]+)/ );
 $unified_file = '/var/tmp/dependence/unified.dat';
 
 sub setIndex {
@@ -71,9 +72,7 @@ sub relationship {
 	TRACE("relationship for $itemName / $otherItem");
 	my $obj = getItem( $itemName ) || return(undef);
 	
-	alarm 2; # paranoia about infinite loops
-	my ($isParent, $isChild) = ( _isParent($itemName, $otherItem, {}), _isChild($itemName, $otherItem, {}) );
-	alarm 0;
+	my ($isParent, $isChild) = ( _isParent($itemName, $otherItem, {}, 0), _isChild($itemName, $otherItem, {}, 0) );
 	
 	my $rel;
 	if ($isParent && $isChild) { $rel = 'CIRCULAR'; }
@@ -87,7 +86,7 @@ sub relationship {
 ### PRIVATE
 
 sub _isParent {
-	my ($itemName, $otherItem, $seen) = @_;
+	my ($itemName, $otherItem, $seen, $depth) = @_;
 	TRACE("_isParent for $itemName / $otherItem");
 	return 0 if $seen->{$itemName}++;
 	my $parents = getParents( $itemName );
@@ -96,13 +95,14 @@ sub _isParent {
 	}
 	TRACE("...not directly, recursing");
 	foreach ( @$parents ) {
-		return 1 if _isParent($_, $otherItem, $seen);
+		die "Deep recursion detected" if ($depth > MAX_DEPTH);
+		return 1 if _isParent($_, $otherItem, $seen, $depth++);
 	}
 	return 0;
 }
 
 sub _isChild {
-	my ($itemName, $otherItem, $seen) = @_;
+	my ($itemName, $otherItem, $seen, $depth) = @_;
 	TRACE("_isChild for $itemName / $otherItem");
 	return 0 if $seen->{$itemName}++;
 	my $children = getChildren( $itemName );
@@ -111,7 +111,8 @@ sub _isChild {
 	}
 	TRACE("...not directly, recursing");
 	foreach ( @$children ) {
-		return 1 if _isChild($_, $otherItem, $seen);
+		die "Deep recursion detected" if ($depth > MAX_DEPTH);
+		return 1 if _isChild($_, $otherItem, $seen, $depth++);
 	}
 	return 0;
 }
@@ -124,33 +125,34 @@ Module::Dependency::Info - retrieve dependency information for scripts and modul
 
 =head1 SYNOPSIS
 
-	use Module::Dependecy::Info;
-	Module::Dependecy::Info::setIndex( '/var/tmp/dependence/unified.dat' );
+	use Module::Dependency::Info;
+	Module::Dependency::Info::setIndex( '/var/tmp/dependence/unified.dat' );
 	
 	# load the index (actually it's loaded automatically if needed so this is optional)
-	Module::Dependecy::Info::retrieveIndex();
+	Module::Dependency::Info::retrieveIndex();
 	# or
-	$refToEntireDatabase = Module::Dependecy::Info::retrieveIndex();
+	$refToEntireDatabase = Module::Dependency::Info::retrieveIndex();
 	
 	$listref = Module::Dependency::Info::allItems();
 	$listref = Module::Dependency::Info::allScripts();
 	
 	# note the syntax here - the name of perl scripts, but the package name of modules.
-	$dependencyInfo = Module::Dependecy::Info::getItem( 'Foo::Bar' [, $forceReload ] );
+	$dependencyInfo = Module::Dependency::Info::getItem( 'Foo::Bar' [, $forceReload ] );
 	# and
-	$dependencyInfo = Module::Dependecy::Info::getItem( 'blahblah.pl' [, $forceReload ] );
+	$dependencyInfo = Module::Dependency::Info::getItem( 'blahblah.pl' [, $forceReload ] );
 	
-	$filename = Module::Dependecy::Info::getFilename( 'Foo::Bar' [, $forceReload ] );
-	$listref = Module::Dependecy::Info::getChildren( $node [, $forceReload ] );
-	$listref = Module::Dependecy::Info::getParents( $node [, $forceReload ] );
+	$filename = Module::Dependency::Info::getFilename( 'Foo::Bar' [, $forceReload ] );
+	$listref = Module::Dependency::Info::getChildren( $node [, $forceReload ] );
+	$listref = Module::Dependency::Info::getParents( $node [, $forceReload ] );
 	
 	$value = Module::Dependency::Info::relationship( 'Foo::Bar', 'strict' );
 	
-	Module::Dependecy::Info::dropIndex();
+	Module::Dependency::Info::dropIndex();
 
 =head1 DESCRIPTION
 
-This module is used to access the data structures created by Module::Dependecy::Indexer. 
+This module is used to access the data structures created by Module::Dependency::Indexer
+B<OR> a third-party application that creates databases of the correct format. 
 Although you can get at the database structure itself you should use the accessor methods.
 
 =head1 METHODS
@@ -178,7 +180,7 @@ keys() gives us. The entries in the array are things like 'foo.pl' and 'Bar::Baz
 Returns a reference ot an array of all the scripts in the currently loaded datafile. The order is whatever
 it is in the datafile.
 
-=item $record = Module::Dependecy::Info::getItem( $name [, $forceReload ] );
+=item $record = Module::Dependency::Info::getItem( $name [, $forceReload ] );
 
 Returns entire record for the thing you name, or undef if no such entry can be found 
 (remember modules are referred to like 'Foo::Bar' whereas scripts like 'foo.pl'). 
@@ -188,16 +190,16 @@ if you want to force a reload - this may be relevant in long-lived perl processe
 like mod_perl, but only do it when you need to, like every 10 minutes 
 or whatever makes sense for your application.
 
-=item $filename = Module::Dependecy::Info::getFilename( $node [, $forceReload ] );
+=item $filename = Module::Dependency::Info::getFilename( $node [, $forceReload ] );
 
 Gets the full filename for the package/script named, or undef if no record could be found.
 
-=item $listref = Module::Dependecy::Info::getChildren( $node [, $forceReload ] );
+=item $listref = Module::Dependency::Info::getChildren( $node [, $forceReload ] );
 
 Gets a list of all dependencies, i.e. packages that this item depends on, for the 
 package/script named, or undef if no record could be found.
 
-=item $listref = Module::Dependecy::Info::getParents( $node [, $forceReload ] );
+=item $listref = Module::Dependency::Info::getParents( $node [, $forceReload ] );
 
 Gets a list of all reverse dependencies, i.e. packages that depend upon this item, for 
 the package/script named, or undef if no record could be found.
@@ -285,7 +287,7 @@ Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Info.pm,v 1.8 2002/04/28 23:28:55 piers Exp $
+$Id: Info.pm,v 1.9 2002/09/25 23:06:35 piers Exp $
 
 =cut
 

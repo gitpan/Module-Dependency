@@ -31,7 +31,7 @@ POD DOCUMENTATION FOLLOWS
 
 
 NAME
-    Module::Dependency::Graph - creates visual dependency charts and
+    Module::Dependency::Grapher - creates visual dependency charts and
     accessible text versions
 
 SYNOPSIS
@@ -71,6 +71,11 @@ DESCRIPTION
     );
         As makeImage() but does it in PostScript or EPS. EPS is the default.
         See below for the options. See README.EXAMPLES too.
+
+    Module::Dependency::Grapher::makeSvg( $kind, $seeds, $filename, $options
+    );
+        As makeImage() but does it in SVG. See below for the options. See
+        README.EXAMPLES too.
 
     Module::Dependency::Grapher::makeText( $kind, $seeds, $filename,
     $options );
@@ -204,14 +209,15 @@ DESCRIPTION
 PREREQUISITES
     If you want to use the makePs() method you'll need PostScript::Simple
     installed. If you want to use the makeImage() method you'll need GD
-    installed. However, these modules are 'require'd as needed so you can
-    quite happily use the makeText and makeHtml routines.
+    installed. If you want to use the makeSvg() method you'll need the SVG
+    module. However, these modules are 'require'd as needed so you can quite
+    happily use the makeText and makeHtml routines.
 
 SEE ALSO
     Module::Dependency and the README files.
 
 VERSION
-    $Id: README.MODULES,v 1.9 2002/09/12 00:37:58 piers Exp $
+    $Id: README.MODULES,v 1.10 2002/09/25 23:07:31 piers Exp $
 
 NAME
     Module::Dependency::Indexer - creates the databases used by the
@@ -324,40 +330,41 @@ SEE ALSO
     Module::Dependency and the README files.
 
 VERSION
-    $Id: README.MODULES,v 1.9 2002/09/12 00:37:58 piers Exp $
+    $Id: README.MODULES,v 1.10 2002/09/25 23:07:31 piers Exp $
 
 NAME
     Module::Dependency::Info - retrieve dependency information for scripts
     and modules
 
 SYNOPSIS
-            use Module::Dependecy::Info;
-            Module::Dependecy::Info::setIndex( '/var/tmp/dependence/unified.dat' );
+            use Module::Dependency::Info;
+            Module::Dependency::Info::setIndex( '/var/tmp/dependence/unified.dat' );
         
             # load the index (actually it's loaded automatically if needed so this is optional)
-            Module::Dependecy::Info::retrieveIndex();
+            Module::Dependency::Info::retrieveIndex();
             # or
-            $refToEntireDatabase = Module::Dependecy::Info::retrieveIndex();
+            $refToEntireDatabase = Module::Dependency::Info::retrieveIndex();
         
             $listref = Module::Dependency::Info::allItems();
             $listref = Module::Dependency::Info::allScripts();
         
             # note the syntax here - the name of perl scripts, but the package name of modules.
-            $dependencyInfo = Module::Dependecy::Info::getItem( 'Foo::Bar' [, $forceReload ] );
+            $dependencyInfo = Module::Dependency::Info::getItem( 'Foo::Bar' [, $forceReload ] );
             # and
-            $dependencyInfo = Module::Dependecy::Info::getItem( 'blahblah.pl' [, $forceReload ] );
+            $dependencyInfo = Module::Dependency::Info::getItem( 'blahblah.pl' [, $forceReload ] );
         
-            $filename = Module::Dependecy::Info::getFilename( 'Foo::Bar' [, $forceReload ] );
-            $listref = Module::Dependecy::Info::getChildren( $node [, $forceReload ] );
-            $listref = Module::Dependecy::Info::getParents( $node [, $forceReload ] );
+            $filename = Module::Dependency::Info::getFilename( 'Foo::Bar' [, $forceReload ] );
+            $listref = Module::Dependency::Info::getChildren( $node [, $forceReload ] );
+            $listref = Module::Dependency::Info::getParents( $node [, $forceReload ] );
         
             $value = Module::Dependency::Info::relationship( 'Foo::Bar', 'strict' );
         
-            Module::Dependecy::Info::dropIndex();
+            Module::Dependency::Info::dropIndex();
 
 DESCRIPTION
     This module is used to access the data structures created by
-    Module::Dependecy::Indexer. Although you can get at the database
+    Module::Dependency::Indexer OR a third-party application that creates
+    databases of the correct format. Although you can get at the database
     structure itself you should use the accessor methods.
 
 METHODS
@@ -381,7 +388,7 @@ METHODS
         Returns a reference ot an array of all the scripts in the currently
         loaded datafile. The order is whatever it is in the datafile.
 
-    $record = Module::Dependecy::Info::getItem( $name [, $forceReload ] );
+    $record = Module::Dependency::Info::getItem( $name [, $forceReload ] );
         Returns entire record for the thing you name, or undef if no such
         entry can be found (remember modules are referred to like 'Foo::Bar'
         whereas scripts like 'foo.pl'). Implicity loads the datafile from
@@ -391,18 +398,18 @@ METHODS
         mod_perl, but only do it when you need to, like every 10 minutes or
         whatever makes sense for your application.
 
-    $filename = Module::Dependecy::Info::getFilename( $node [, $forceReload
+    $filename = Module::Dependency::Info::getFilename( $node [, $forceReload
     ] );
         Gets the full filename for the package/script named, or undef if no
         record could be found.
 
-    $listref = Module::Dependecy::Info::getChildren( $node [, $forceReload ]
-    );
+    $listref = Module::Dependency::Info::getChildren( $node [, $forceReload
+    ] );
         Gets a list of all dependencies, i.e. packages that this item
         depends on, for the package/script named, or undef if no record
         could be found.
 
-    $listref = Module::Dependecy::Info::getParents( $node [, $forceReload ]
+    $listref = Module::Dependency::Info::getParents( $node [, $forceReload ]
     );
         Gets a list of all reverse dependencies, i.e. packages that depend
         upon this item, for the package/script named, or undef if no record
@@ -490,5 +497,5 @@ SEE ALSO
     Module::Dependency and the README files.
 
 VERSION
-    $Id: README.MODULES,v 1.9 2002/09/12 00:37:58 piers Exp $
+    $Id: README.MODULES,v 1.10 2002/09/25 23:07:31 piers Exp $
 

@@ -1,6 +1,9 @@
 CHANGES
 
-$Date: 2002/04/28 23:28:48 $
+$Date: 2002/09/25 23:09:31 $
+
+Fixed minor typoes and niggling things that should have been corrected 
+in the distribution - thanks to Mike Castle & Ron Savage
 
 Indexer.pm converts paths to absolute paths before running File::Find,
 giving the correct, expected, behaviour when you try to index relative

@@ -9,6 +9,19 @@ if you wish) that allow you to investigate the dependencies between
 perl programs and modules. This is primarily aimed at the programmer/
 developer audience.
 
+Not just for modules
+--- ---- --- -------
+
+The system is split into two halves - gathering the data, and examining
+the data - so you are free to create a database (mentioned below) however
+you want based on whatever metrics you want and query that using the
+::Info and ::Grapher modules. Or you may choose to build your own tools
+for querying the database.
+
+In any case these modules work with heirarchies of many-to-many parent-child
+relationships, so if your data can be viewed like that maybe some of the
+code here could be useful.
+
 What are dependencies?
 ---- --- -------------
 

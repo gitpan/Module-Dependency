@@ -7,7 +7,7 @@ use vars qw/$VERSION @TIERS %LOOKUP %COLOURS
 $nOffset $eOffset $sOffset $wOffset
 /;
 
-($VERSION) = ('$Revision: 1.21 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 1.22 $' =~ /([\d\.]+)/ );
 
 %COLOURS = (
 	type => [0,0,0],
@@ -566,7 +566,7 @@ sub LOG {}
 
 =head1 NAME
 
-Module::Dependency::Graph - creates visual dependency charts and accessible text versions
+Module::Dependency::Grapher - creates visual dependency charts and accessible text versions
 
 =head1 SYNOPSIS
 
@@ -604,6 +604,10 @@ See below for the options. See README.EXAMPLES too.
 =item Module::Dependency::Grapher::makePs( $kind, $seeds, $filename, $options );
 
 As makeImage() but does it in PostScript or EPS. EPS is the default. See below for the options. See README.EXAMPLES too.
+
+=item Module::Dependency::Grapher::makeSvg( $kind, $seeds, $filename, $options );
+
+As makeImage() but does it in SVG. See below for the options. See README.EXAMPLES too.
 
 =item Module::Dependency::Grapher::makeText( $kind, $seeds, $filename, $options );
 
@@ -732,6 +736,7 @@ If empty (as is the default) then you get no clickable links in the SVG output.
 
 If you want to use the makePs() method you'll need PostScript::Simple installed.
 If you want to use the makeImage() method you'll need GD installed.
+If you want to use the makeSvg() method you'll need the SVG module.
 However, these modules are 'require'd as needed so you can quite happily use the makeText and makeHtml routines.
 
 =head1 SEE ALSO
@@ -740,6 +745,6 @@ Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Grapher.pm,v 1.21 2002/09/12 00:38:04 piers Exp $
+$Id: Grapher.pm,v 1.22 2002/09/25 23:06:35 piers Exp $
 
 =cut

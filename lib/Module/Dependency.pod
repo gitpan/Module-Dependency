@@ -1,6 +1,6 @@
 =head1 NAME
 
-Module::Dependency - Collection of modules for examining dependencies between Perl files
+Module::Dependency - Collection of modules for examining dependencies between parents and children, like Perl files
 
 =head1 SYNOPSIS
 
@@ -46,11 +46,12 @@ You'll need: Storable, File::Find, File::Spec - all of which are standard with P
 Optionally, if you have certain other modules you can do more: 
 If you want image output you'll need GD.
 If you want PostScript output you'll need PostScript::Simple.
+If you want SVG output you'll need the SVG module.
 If you want to be able to index modules that use the 'base' pragma, as in
 'use base qw(Foo);' you'll need Safe (standard with Perl 5.6).
 
 =head1 VERSION
 
-$Id: Dependency.pod,v 1.1 2002/04/01 11:17:13 piers Exp $
+$Id: Dependency.pod,v 1.2 2002/09/25 23:06:35 piers Exp $
 
 =cut
