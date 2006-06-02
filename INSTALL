@@ -8,17 +8,16 @@ make
 make test
 make install
 
-This installs the core software. There are a few items you may want to
-use and install manually.
+This installs the core software. There are a few items in the examples
+directory you may want to use and install manually.
 
 Also, read the README.
 
 Prerequisites
 -------------
 
-You need GD for the Grapher module, and you need Storable and File::Find.
-You may optionally choose to install PostScript::Simple to allow 
-PostScript/EPS output.
+You need GD for the Grapher module.  You may optionally choose to install
+PostScript::Simple to allow PostScript/EPS output.
 
 OPTIONAL ITEMS
 -------- -----
@@ -27,13 +26,13 @@ Command line tools
 ------- ---- -----
 
 Additionally you may wish to put the command-line utilities somewhere,
-e.g. /usr/local/scripts or similar. These utilities (grapher.plx, dumper.plx
-and indexer.plx) are described in README.COMMANDS.
+e.g. /usr/local/scripts or similar. These utilities (pmd_grapher.plx, pmd_dumper.plx
+and pmd_indexer.plx) are described in README.COMMANDS.
 
 Before installing them note that part of this distribution uses GD. So you
 need to have GD installed. Then you should find out whether your GD does
 PNGs or GIFs - it will probably do PNGs. You may edit the bit near the
-top of grapher.plx to reflect your local GDs abilities - it says 'PNG' to
+top of pmd_grapher.plx to reflect your local GDs abilities - it says 'PNG' to
 start with.
 
 CGI Interface
@@ -41,7 +40,7 @@ CGI Interface
 
 You may want to install the CGI interface - this consists of an HTML form
 that submits the request and a CGI program to service the request. The form
-is cgiform.html and the program is cgidepend.plx. You will need to edit the
+is pmd_cgiform.html and the program is pmd_cgidepend.plx. You will need to edit the
 HTML in the places marked by comments. You will need to tweak the CGI itself
 where marked by comments near the top of the source.
 
@@ -55,13 +54,7 @@ in textual form, and also has an inline image. That image src attribute is
 actually the CGI called for a second time.
 
 As an example I have the form installed as /depend.html and the cgi is 
-/cgi-bin/cgidepend.plx and it works fine.
-
-For a working example see:
-http://www.selsyn.co.uk/depend.shtml
-
-NOTE: -w is turned off because it led to spurious 500 errors in a Cobalt RaQ
-server. All developement was done with -w turned on.
+/cgi-bin/pmd_cgidepend.plx and it works fine.
 
 PostScript Output
 ---------- ------

@@ -8,7 +8,7 @@ This is some POD to ensure that the indexer skips POD correctly
 
 use Power::Windows;
 
-=cut
+=cut with extra comments on the cut line
 
 use e;
 use base qw(Oberheim Anthem);

@@ -5,8 +5,13 @@ use File::Spec;
 use Storable qw/nstore/;
 use vars qw/$VERSION $UNIFIED @NOINDEX $unified_file $check_shebang/;
 
-($VERSION) = ('$Revision: 1.13 $' =~ /([\d\.]+)/ );
-@NOINDEX = qw(.AppleDouble /test /CVS/);
+($VERSION) = ('$Revision: 1.14 $' =~ /([\d\.]+)/ );
+@NOINDEX = qw(.AppleDouble /test);
+my %ignore_file_names = map { $_=>1 } qw(
+    CVS
+    .svn
+    .cpan
+);
 $check_shebang = 1;
 
 $unified_file = '/var/tmp/dependence/unified.dat';
@@ -86,11 +91,15 @@ sub _wanted {
 	local $_ = $_;
 	my $fname = $File::Find::name;
 	
+        if ($ignore_file_names{$_}) {
+            TRACE("Rejecting $fname");
+            return;
+        }
 	foreach (@NOINDEX) {
-		if (index($fname, $_) > -1) {
-			TRACE("Rejecting $fname");
-			return;
-		}
+            if (index($fname, $_) > -1) {
+                TRACE("Rejecting $fname");
+                return;
+            }
 	}
 	
 	TRACE("Indexing $fname");
@@ -118,15 +127,14 @@ sub _wanted {
 }
 
 # Get data from a module file, returns a dependency unit object
-sub _parseModule {
+sub _parseFile {
 	my $file = shift;
+
 	my $self = {
 		'filename' => $file,
-		'package' => '',
 		'depends_on' => [],
 		'depended_upon_by' => [],
 	};
-	my $foundPackage = 0;
 	
 	my %seen;
 	
@@ -137,22 +145,21 @@ sub _parseModule {
 	my $in_pod;
 	while(<FILE>) {
 		if ($in_pod) {
-			$in_pod = 0 if (/^=cut\s*$/);
+			$in_pod = 0 if /^=cut/;
 			next;
 		}
 
 		# get the package name
-		if (m/^\s*package\s+([\w\:]+)\s*;/ && $foundPackage == 0) {
-			$foundPackage = 1;
-			$self->{'package'} = $1;
-			TRACE("*** package is <$1> ***");
+		if (m/^\s*package\s+([\w\:]+)\s*;/) {
+                        # only record the first package seen
+			$self->{'package'} = $1 unless exists $self->{'package'};
 		}
 		# get the dependencies
-		if (m/^\s*use\s+([\w\:]+).*;/) {
+		if (m/^\s*use\s+([\w\:]+)/) {
 			push (@{$self->{'depends_on'}}, $1) unless ($seen{$1}++);
 		}
-		# get the dependencies
-		if (m/^\s*require\s+([\w\:]+).*;/) {
+		# get the dependencies - XXX doesn't deal with require "Foo/Bar.pm"
+		if (m/^\s*require\s+([\w\:]+)/) {
 			push (@{$self->{'depends_on'}}, $1) unless ($seen{$1}++);
 		}
 		
@@ -174,61 +181,38 @@ sub _parseModule {
 			}
 		}
 
-		$in_pod = 1 if m/^=\w+/;
-		last if m/^__/;
-		last if m/^1;/;
+		$in_pod = 1 if m/^=\w+/ && !m/^=cut/;
+		last if m/^\s*__(END|DATA)__/;
 	}
 	close FILE;
 	
-	if ($foundPackage) {
-		return $self;
-	} else {
-		return undef;
+	return $self;
+}
+
+# Get data from a module file, returns a dependency unit object
+sub _parseModule {
+	my $file = shift;
+	my $self = _parseFile($file)
+            or return;
+        if (!$self->{'package'}) {
+            warn "No package found in $file\n";
+            return undef;
 	}
+        return $self;
 }
 
 # Get data from a program file, returns a dependency unit object
 sub _parseScript {
 	my $file = shift;
-	
-	my $node;
-	(undef, undef, $node) = File::Spec->splitpath( $file );
-	TRACE("Filename $node found from $file");
-	
-	my $self = {
-		'filename' => $file,
-		'package' => $node,
-		'depends_on' => [],
-	};
-	my $foundPackage = 0;
-	
-	my %seen;
-	
-	# go through the file and try to find out some things
-	local *FILE;
-	open(FILE, $file) or do { warn("Can't open file $file for read: $!"); return undef; };
+	my $self = _parseFile($file)
+            or return;
 
-	my $in_pod;
-	while(<FILE>) {
-		if ($in_pod) {
-			$in_pod = 0 if (/^=cut\s*$/);
-			next;
-		}
+        # XXX force package for script file to be the filename (without directory)
+	(undef, undef, my $filename) = File::Spec->splitpath( $file );
+        warn "$file contains package $self->{'package'} but we ignore it"
+                if $self->{'package'};
+	$self->{'package'} = $filename;
 
-		# get the dependencies
-		if (m/\s*use\s+([\w\:]+).*;/) {
-			push (@{$self->{'depends_on'}}, $1) unless ($seen{$1}++);
-		}
-		# get the dependencies
-		if (m/\s*require\s+([\w\:]+).*;/) {
-			push (@{$self->{'depends_on'}}, $1) unless ($seen{$1}++);
-		}
-
-		$in_pod = 1 if m/^=\w+/;
-		last if m/^__/;
-	}
-	close FILE;
-	
 	return $self;
 }
 

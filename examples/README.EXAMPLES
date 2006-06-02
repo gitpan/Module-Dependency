@@ -6,7 +6,7 @@ Examples
 
 You should find some examples of what the Grapher module can do in the
 root of this distribution. All examples were generated from the test
-files in the t/u/ directory using the grapher.plx program.
+files in the t/u/ directory using the pmd_grapher.plx program.
 
 Images
 ------

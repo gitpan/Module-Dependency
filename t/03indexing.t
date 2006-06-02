@@ -2,7 +2,7 @@
 # $Id: 03indexing.t,v 1.4 2002/04/28 23:42:21 piers Exp $
 use strict;
 use lib qw(./lib ../lib);
-use Test;
+use Test::More;
 use Cwd;
 use File::Spec::Functions;
 use Module::Dependency::Info;
@@ -31,14 +31,16 @@ ok( @{ Module::Dependency::Info::allItems() } == 11 );
 ok( Module::Dependency::Info::allScripts()->[1] =~ m/(x.pl|y.pl|z.cgi)/ );
 
 my $i = Module::Dependency::Info::getItem('d');
+use Data::Dumper;
+print Dumper($i);
 ok( $i->{'filename'} =~ m|d\.pm| );
-ok( $i->{'package'} eq 'd' );
-ok( $i->{'depended_upon_by'}->[2] eq 'c' );
-ok( $i->{'depends_on'}->[3] eq 'h' );
+is $i->{'package'}, 'd';
+is join(' ', sort @{$i->{'depended_upon_by'}}), 'a b c';
+is join(' ', sort @{$i->{'depends_on'}}), 'f g h lib';
 
-ok( Module::Dependency::Info::getFilename('f') =~ m|f\.pm$|);
-ok( Module::Dependency::Info::getChildren('f')->[0] eq 'strict');
-ok( Module::Dependency::Info::getParents('f')->[0] eq 'd');
+like Module::Dependency::Info::getFilename('f'), '/f\.pm$/';
+is Module::Dependency::Info::getChildren('f')->[0], 'strict';
+is Module::Dependency::Info::getParents('f')->[0], 'd';
 
 ok( Module::Dependency::Info::dropIndex() );
 ok( ! defined( $Module::Dependency::Info::UNIFIED ) );

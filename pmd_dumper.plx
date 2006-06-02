@@ -1,8 +1,7 @@
 #!/usr/bin/perl -w
-# $Id: dumper.plx,v 1.8 2002/04/01 11:17:09 piers Exp $
+# $Id: pmd_dumper.plx,v 1.8 2002/04/01 11:17:09 piers Exp $
 
 use strict;
-use lib './lib';
 use Getopt::Std;
 use Module::Dependency::Info;
 use Data::Dumper;
@@ -107,11 +106,11 @@ __DATA__
 
 =head1 NAME
 
-dumper - print basic Module::Dependency info
+pmd_dumper - print basic Module::Dependency info
 
 =head1 SYNOPSIS
 
-	dumper.plx [-h] [-t] [-o <datafile>] [-a] [-s] [-l] [ {-f|-p|-c|-i} <script/module>] [ -r item1 item2 ]
+	pmd_dumper.plx [-h] [-t] [-o <datafile>] [-a] [-s] [-l] [ {-f|-p|-c|-i} <script/module>] [ -r item1 item2 ]
 
 	-h Displays this help
 	-t Displays tracing messages
@@ -128,7 +127,7 @@ dumper - print basic Module::Dependency info
 
 =head1 EXAMPLE
 
-	dumper.plx -o ./unified.dat -i Module::Dependency::Info
+	pmd_dumper.plx -o ./unified.dat -i Module::Dependency::Info
 
 =head1 DESCRIPTION
 
@@ -143,7 +142,7 @@ When you run this tool it prints a dump of the data requested using Data::Dumper
 
 =head1 VERSION
 
-$Id: dumper.plx,v 1.8 2002/04/01 11:17:09 piers Exp $
+$Id: pmd_dumper.plx,v 1.8 2002/04/01 11:17:09 piers Exp $
 
 =cut
 

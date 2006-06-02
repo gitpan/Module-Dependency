@@ -1,8 +1,7 @@
 #!/usr/bin/perl -w
-# $Id: grapher.plx,v 1.11 2002/07/07 00:28:00 piers Exp $
+# $Id: pmd_grapher.plx,v 1.11 2002/07/07 00:28:00 piers Exp $
 
 use strict;
-use lib './lib';
 use Getopt::Std;
 use Module::Dependency::Info;
 use Module::Dependency::Grapher;
@@ -124,11 +123,11 @@ __DATA__
 
 =head1 NAME
 
-grapher - display Module::Dependency info in a graphical manner
+pmd_grapher - display Module::Dependency info in a graphical manner
 
 =head1 SYNOPSIS
 
-	grapher.plx [-h] [-t]
+	pmd_grapher.plx [-h] [-t]
 		[-f FORMAT] [-o <datafile>]
 		[-m REGEX] [-n REGEX] [-s START_AT [-r] [-b]]
 		<filename>
@@ -160,7 +159,7 @@ grapher - display Module::Dependency info in a graphical manner
 
 =head1 EXAMPLE
 
-	grapher.plx -t -s Module::Dependency::Info -o ./unified.dat foo.gif
+	pmd_grapher.plx -t -s Module::Dependency::Info -o ./unified.dat foo.gif
 
 =head1 DESCRIPTION
 
@@ -170,7 +169,7 @@ to give parent and/or child relationships.
 
 =head1 VERSION
 
-$Id: grapher.plx,v 1.11 2002/07/07 00:28:00 piers Exp $
+$Id: pmd_grapher.plx,v 1.11 2002/07/07 00:28:00 piers Exp $
 
 =cut
 

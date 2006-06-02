@@ -1,6 +1,23 @@
-CHANGES
+=head1 NAME
 
-$Date: 2002/09/25 23:09:31 $
+Module::Dependency::Changes - List of significant changes to Module::Dependency
+
+=head2 Changes in Module::Dependency 1.81 (svn rev XXX),  30th May 2006
+
+First release under new maintainer Tim Bunce.
+
+ Fixed parsing of multi-line use statements.
+ Fixed parsing of unusual =cut statements.
+ Fixed tests to not depend on hash order.
+
+ Renamed scripts to have a pmd_ prefix.
+ Moved examples into new examples/ subdirectory.
+ Moced pmd_cgidepend.plx and pmd_cgiform.html into examples.
+ Unified script and module parsing code.
+
+=head2 Changes prior to version 1.81
+
+Date: 2002/09/25 23:09:31
 
 Fixed minor typoes and niggling things that should have been corrected 
 in the distribution - thanks to Mike Castle & Ron Savage
@@ -33,3 +50,5 @@ mod_perl friendly.
 
 Some code and ideas kindly contributed by S Rezic, S Heffner and C Sampson,
 among others.
+
+=cut

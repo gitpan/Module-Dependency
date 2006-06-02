@@ -8,20 +8,21 @@ This readme should give you an overview of the commands bundled with this
 distribution. Please see the README.MODULES file for more behind-the-scenes
 information. See the README for an overview.
 
-indexer.plx
------------
+pmd_indexer.plx
+---------------
 
-Creates a database file for one or more directories. 
+Creates a database file holding dependency information for the source files in
+one or more directories. 
 
-dumper.plx
-----------
+pmd_dumper.plx
+--------------
 
 Extracts information from the database and displays it on standard output.
 E.g. parent dependencies, child dependencies, actual filesystem path, all
 items indexed, etc.
 
-grapher.plx
------------
+pmd_grapher.plx
+---------------
 
 Generates a graphical 'dependency tree'. It can map parent, child or both 
 directions of dependency, and it can be told which items to plot dependencies
@@ -35,203 +36,13 @@ the -t option to get all the tracing messages so that you can see what's going o
 under the bonnet.
 
 
-cgidepend.plx
--------------
+examples/pmd_cgidepend.plx
+--------------------------
 
 An example CGI interface. You'll need to create a database before this will do 
-anything useful - use indexer.plx for that. You'll need to edit a few lines
+anything useful - use pmd_indexer.plx for that. You'll need to edit a few lines
 in this CGI - they are clearly marked near the top.
 
 Run it with no query string to get the help message. Takes these CGI params:
 go, embed, format, datafile, seed, allscripts, kind. See its POD for more detail.
 An example installation is at: http://www.selsyn.co.uk/depend.shtml
-
-POD DOCUMENTATION FOLLOWS
--------------------------------------------------------------------------
-
-
-NAME
-    cgidepend - display Module::Dependency info to your web browser
-
-SYNOPSIS
-    Called without any/sufficient parameters you get this documentation
-    returned.
-
-    These CGI parameters are recognized:
-
-    go  Must be true - used to ensure we have been called correctly
-
-    embed
-        If 1, returns an image, if 0 returns the HTML, if 2 returns the HTML
-        with no header/footer, suitable for including in another web page.
-
-    howembed
-        'object' (the default, set as a constant) or 'embed' - if using an
-        SVG image, specify how you want the image embedded in the page.
-
-    format
-        Optionally, specifically ask for one kind of image format (default
-        is 'PNG', but may be 'GIF' or whatever your GD allows)
-
-    datafile
-        Optionally sets the data file location. The constant DATADIR
-        (default is '') is prepended to this to restrict the files that can
-        be used.
-
-    seed
-        Which item to start with, or...
-
-    allscripts
-        if true, use all the scripts in the database as seeds
-
-    kind
-        Which dependencies to plot - may be 'both' (the default) 'parent' or
-        'child'.
-
-    re  A regular expression - only show items matching this regex.
-
-    xre A regular expression - do not show items matching this regex.
-
-DESCRIPTION
-    The original thought that created the Module::Dependency software came
-    when browsing our CVS repository. CVSWeb is installed to allow web
-    browsing, and a tree of documentation is made automatically. I thought
-    it would be useful to see what a module depended upon, and what depended
-    upon it.
-
-    This CGI is an attempt at doing that. It can be called in 2 modes: one
-    returns the HTML of the page, and the other returns a PNG (or GIF) that
-    the page embeds.
-
-    The HTML mode basically gives you all the dependency info for the item,
-    and the image shows it to you in an easy to understand way.
-
-NOTES
-    This program can build a client-side imagemap which allows you to click
-    on an item in the image and make that the root of the dependency tree.
-    If a robot, spider or similar web-crawling program finds your CGI it may
-    decide to follow all the links it can find, including those in the
-    imagemap. Personally I don't find this a problem, but it's just
-    something to be aware of. You can disable the imagemap by setting the
-    DOES_IMAGEMAP constant to zero. This also disable clickable text in SVG
-    images, if used.
-
-    If you want to change the default values of anything, edit this script
-    and look at the top of the file.
-
-VERSION
-    $Id: README.COMMANDS,v 1.10 2002/09/25 23:07:31 piers Exp $
-
-NAME
-    dumper - print basic Module::Dependency info
-
-SYNOPSIS
-            dumper.plx [-h] [-t] [-o <datafile>] [-a] [-s] [-l] [ {-f|-p|-c|-i} <script/module>] [ -r item1 item2 ]
-
-            -h Displays this help
-            -t Displays tracing messages
-            -o the location of the datafile (default is 
-               /var/tmp/dependence/unified.dat)
-            -a Get the entire database
-            -s List the names of all scripts indexed
-            -l List all items indexed
-            -f Full filename of given script/module
-            -p Get list of items that immediately depend on script/module (i.e. parents)
-            -c Get list of items that script/module immediately depends on (i.e. children)
-            -i Dump the record for the script/module
-            -r State the relationship, if any, between item1 and item2 - both may be scripts or modules.
-
-EXAMPLE
-            dumper.plx -o ./unified.dat -i Module::Dependency::Info
-
-DESCRIPTION
-    Module::Dependency modules rely on a database of dependencies. This tool
-    allows you to query the index, verify that it contains what it should
-    contain, look up module dependencies, etc, all using the
-    Module::Dependency::Info API.
-
-    The default location for the index file is
-    /var/tmp/dependence/unified.dat but you can select another file using
-    the -o option.
-
-    When you run this tool it prints a dump of the data requested using
-    Data::Dumper.
-
-VERSION
-    $Id: README.COMMANDS,v 1.10 2002/09/25 23:07:31 piers Exp $
-
-NAME
-    grapher - display Module::Dependency info in a graphical manner
-
-SYNOPSIS
-            grapher.plx [-h] [-t]
-                    [-f FORMAT] [-o <datafile>]
-                    [-m REGEX] [-n REGEX] [-s START_AT [-r] [-b]]
-                    <filename>
-
-            -h Displays this help
-            -t Displays tracing messages
-            -f Choose an output format - default is 'png'
-               'text' - Output with the makeText method to emit a plaintext tree.
-               'html' - Output with the makeHtml method to emit an HTML fragment.
-               'gif'/'png' - Output an image.
-               'ps'/'eps' - Output (Encapsulated) PostScript (requires PostScript::Simple)
-               'svg' - Scalable Vector Graphic
-            -o the location of the datafile (default is 
-               /var/tmp/dependence/unified.dat)
-            -m Optional regular expression - only show dependencies that match this expression
-            -n Optional regular expression - do not show dependencies that match this expression
-            -s Starts the dependency tree at this script/module
-               Default is to start with ALL scripts
-               Can be like 'foo,bar' to start with a list of items.
-            -r Reverse dependency, i.e. show the things that depend upon
-               a package, not the things a package depends upon.
-               The default is to show forward dependencies only.
-            -b Both ways dependency - show parents and children.
-            <filename> The file where you want to send the output.
-               Use - for STDOUT.
-        
-            NB: If no -f option is supplied we guess the format by looking at the
-            filename. If we still can't guess then the default is used - PNG.
-
-EXAMPLE
-            grapher.plx -t -s Module::Dependency::Info -o ./unified.dat foo.gif
-
-DESCRIPTION
-    The best way to show and understand dependency relations is using a tree
-    diagram. This program creates a visual dependency tree, going in both
-    directions if required to give parent and/or child relationships.
-
-VERSION
-    $Id: README.COMMANDS,v 1.10 2002/09/25 23:07:31 piers Exp $
-
-NAME
-    indexer - make Module::Dependency index
-
-SYNOPSIS
-            indexer.plx [-h] [-t] [-o <datafile>] -b <directory> [<directory>...]
-
-            -h Displays this help
-            -t Displays trace messages
-            -b Actually build the indexes
-            -o the location of the datafile (default is 
-               /var/tmp/dependence/unified.dat)
-
-            Followed by a list of directories that you want to index.
-
-EXAMPLE
-            indexer.plx -o ./unified.dat -t -b ~/src/dependency/
-
-DESCRIPTION
-    Module::Dependency modules rely on a database of dependencies because
-    creating the index at every runtime is both expensive and unnecessary.
-    This program uses File::Find for every named directory and looks for .pl
-    and .pm files, which it then extracts dependency information from.
-
-    The default location for the index file is
-    /var/tmp/dependence/unified.dat but you can look in another directory
-    using the -o option.
-
-VERSION
-    $Id: README.COMMANDS,v 1.10 2002/09/25 23:07:31 piers Exp $
-

@@ -1,8 +1,7 @@
 #!/usr/bin/perl -w
-# $Id: indexer.plx,v 1.7 2002/01/21 15:41:17 piers Exp $
+# $Id: pmd_indexer.plx,v 1.7 2002/01/21 15:41:17 piers Exp $
 
 use strict;
-use lib './lib';
 use Getopt::Std;
 use Module::Dependency::Indexer;
 
@@ -49,11 +48,11 @@ __DATA__
 
 =head1 NAME
 
-indexer - make Module::Dependency index
+pmd_indexer - make Module::Dependency index
 
 =head1 SYNOPSIS
 
-	indexer.plx [-h] [-t] [-o <datafile>] -b <directory> [<directory>...]
+	pmd_indexer.plx [-h] [-t] [-o <datafile>] -b <directory> [<directory>...]
 
 	-h Displays this help
 	-t Displays trace messages
@@ -65,7 +64,7 @@ indexer - make Module::Dependency index
 
 =head1 EXAMPLE
 
-	indexer.plx -o ./unified.dat -t -b ~/src/dependency/
+	pmd_indexer.plx -o ./unified.dat -t -b ~/src/dependency/
 
 =head1 DESCRIPTION
 
@@ -79,7 +78,7 @@ you can look in another directory using the -o option.
 
 =head1 VERSION
 
-$Id: indexer.plx,v 1.7 2002/01/21 15:41:17 piers Exp $
+$Id: pmd_indexer.plx,v 1.7 2002/01/21 15:41:17 piers Exp $
 
 =cut
 
