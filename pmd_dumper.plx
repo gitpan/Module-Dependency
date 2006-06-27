@@ -7,7 +7,7 @@ use Data::Dumper;
 use Module::Dependency::Info;
 
 use vars qw/$VERSION $opt_h $opt_t $opt_o $opt_a $opt_s $opt_l $opt_f $opt_p $opt_c $opt_i $opt_r/;
-$VERSION = (q$Revision: 6566 $) =~ /(\d+)/g;
+$VERSION = (q$Revision: 6570 $ =~ /(\d+)/g)[0];
 
 
 getopts('hto:aslf:p:c:i:r');
@@ -164,7 +164,7 @@ When you run this tool it prints a dump of the data requested using Data::Dumper
 
 =head1 VERSION
 
-$Id: pmd_dumper.plx,v 1.8 2002/04/01 11:17:09 piers Exp $
+$Id: pmd_dumper.plx 6570 2006-06-27 15:01:04Z timbo $
 
 =cut
 

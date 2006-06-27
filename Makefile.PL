@@ -10,7 +10,7 @@ WriteMakefile(
         PREOP => '$(MAKE) -f Makefile.old distdir',
         COMPRESS => 'gzip -v9', SUFFIX => 'gz',
     },
-    VERSION 	=> '1.82',
+    VERSION 	=> '1.83',
     PREREQ_PM	=> {
         Storable => 0,
         File::Find => 0,

@@ -7,7 +7,7 @@ use vars qw/$VERSION @TIERS %LOOKUP %COLOURS
     $nOffset $eOffset $sOffset $wOffset
     /;
 
-$VERSION = (q$Revision: 6562 $) =~ /(\d+)/g;
+$VERSION = (q$Revision: 6570 $ =~ /(\d+)/g)[0];
 
 %COLOURS = (
     type      => [ 0,   0,   0 ],
@@ -880,7 +880,7 @@ Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Grapher.pm,v 1.22 2002/09/25 23:06:35 piers Exp $
+$Id: Grapher.pm 6570 2006-06-27 15:01:04Z timbo $
 
 =cut
 

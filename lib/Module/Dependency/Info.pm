@@ -4,7 +4,7 @@ use Storable qw/retrieve/;
 use vars qw/$VERSION $UNIFIED $unified_file $LOADED/;
 use constant MAX_DEPTH => 1000;
 
-$VERSION      = (q$Revision: 6562 $) =~ /(\d+)/g;
+$VERSION      = (q$Revision: 6570 $ =~ /(\d+)/g)[0];
 $unified_file = '/var/tmp/dependence/unified.dat';
 
 sub setIndex {
@@ -289,7 +289,7 @@ Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Info.pm,v 1.9 2002/09/25 23:06:35 piers Exp $
+$Id: Info.pm 6570 2006-06-27 15:01:04Z timbo $
 
 =cut
 

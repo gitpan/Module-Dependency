@@ -10,7 +10,7 @@ use Storable qw/nstore/;
 
 use vars qw/$VERSION $UNIFIED @NOINDEX $unified_file $check_shebang/;
 
-$VERSION = (q$Revision: 6568 $) =~ /(\d+)/g;
+$VERSION = (q$Revision: 6570 $ =~ /(\d+)/g)[0];
 
 @NOINDEX = qw(.AppleDouble);
 my %ignore_names = map { $_ => 1 } qw(
@@ -417,7 +417,7 @@ Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Indexer.pm,v 1.13 2002/09/25 23:06:35 piers Exp $
+$Id: Indexer.pm 6570 2006-06-27 15:01:04Z timbo $
 
 =cut
 

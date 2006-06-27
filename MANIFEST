@@ -4,8 +4,6 @@ LICENSE
 MANIFEST
 Makefile.PL
 README
-README.COMMANDS
-README.MODULES
 examples/pmd_cgiform.html
 examples/README.EXAMPLES
 examples/example.css

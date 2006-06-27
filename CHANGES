@@ -2,6 +2,11 @@
 
 Module::Dependency::Changes - List of significant changes to Module::Dependency
 
+=head2 Changes in Module::Dependency 1.83 (svn rev 6568),  27th June 2006
+
+    Fixed VERSION numbers.
+    Simplified README docs, INSTALL and added my name to LICENCE.
+
 =head2 Changes in Module::Dependency 1.82 (svn rev 6568),  27th June 2006
 
     Stored data changes:

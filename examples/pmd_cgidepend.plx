@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: cgidepend.plx,v 1.10 2002/07/07 00:42:26 piers Exp $
+# $Id: pmd_cgidepend.plx 6570 2006-06-27 15:01:04Z timbo $
 
 ### YOU MAY NEED TO EDIT THE SHEBANG LINE!
 
@@ -32,7 +32,7 @@ use Module::Dependency::Grapher;
 
 use vars qw/$VERSION $cgi %MIMELUT/;
 
-($VERSION) = ('$Revision: 1.10 $' =~ /([\d\.]+)/ );
+($VERSION) = ('$Revision: 6570 $' =~ /([\d\.]+)/ );
 $cgi = new CGI;
 %MIMELUT = (
 	'GIF' => 'image/gif',
@@ -268,7 +268,7 @@ If you want to change the default values of anything, edit this script and look 
 
 =head1 VERSION
 
-$Id: cgidepend.plx,v 1.10 2002/07/07 00:42:26 piers Exp $
+$Id: pmd_cgidepend.plx 6570 2006-06-27 15:01:04Z timbo $
 
 =cut
 

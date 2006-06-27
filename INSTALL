@@ -1,3 +1,8 @@
+README
+------
+
+Read the README file first.
+
 Installation
 ------------
 
@@ -11,8 +16,6 @@ make install
 This installs the core software. There are a few items in the examples
 directory you may want to use and install manually.
 
-Also, read the README.
-
 Prerequisites
 -------------
 
@@ -25,15 +28,13 @@ OPTIONAL ITEMS
 Command line tools
 ------- ---- -----
 
-Additionally you may wish to put the command-line utilities somewhere,
-e.g. /usr/local/scripts or similar. These utilities (pmd_grapher.plx, pmd_dumper.plx
-and pmd_indexer.plx) are described in README.COMMANDS.
+You'll need GD installed to produce image files from pmd_grapher.plx.
+Before installing pmd_grapher.plx you should find out whether your GD does PNGs
+or GIFs - it will probably do PNGs. You may edit the bit near the top of
+pmd_grapher.plx to reflect your local GDs abilities - it says 'PNG' to start with.
 
-Before installing them note that part of this distribution uses GD. So you
-need to have GD installed. Then you should find out whether your GD does
-PNGs or GIFs - it will probably do PNGs. You may edit the bit near the
-top of pmd_grapher.plx to reflect your local GDs abilities - it says 'PNG' to
-start with.
+If you want to write the dependency charts as PostScript or EPS files you
+need to install the PostScript::Simple module.
 
 CGI Interface
 --- ---------
@@ -56,8 +57,3 @@ actually the CGI called for a second time.
 As an example I have the form installed as /depend.html and the cgi is 
 /cgi-bin/pmd_cgidepend.plx and it works fine.
 
-PostScript Output
----------- ------
-
-If you want to write the dependency charts as PostScript or EPS files you
-need to install the PostScript::Simple module.

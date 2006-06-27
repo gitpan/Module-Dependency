@@ -1,12 +1,12 @@
 #!/usr/bin/perl -w
-# $Id: pmd_indexer.plx,v 1.7 2002/01/21 15:41:17 piers Exp $
+# $Id: pmd_indexer.plx 6570 2006-06-27 15:01:04Z timbo $
 
 use strict;
 use Getopt::Std;
 use Module::Dependency::Indexer;
 
 use vars qw/$VERSION $opt_h $opt_t $opt_b $opt_o/;
-$VERSION = (q$Revision: 6562 $) =~ /(\d+)/g;
+$VERSION = (q$Revision: 6570 $ =~ /(\d+)/g)[0];
 
 getopts('htbo:');
 if ( $opt_h || !scalar(@ARGV) ) { usage(); }
@@ -77,7 +77,7 @@ you can look in another directory using the -o option.
 
 =head1 VERSION
 
-$Id: pmd_indexer.plx,v 1.7 2002/01/21 15:41:17 piers Exp $
+$Id: pmd_indexer.plx 6570 2006-06-27 15:01:04Z timbo $
 
 =cut
 

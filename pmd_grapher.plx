@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# $Id: pmd_grapher.plx,v 1.11 2002/07/07 00:28:00 piers Exp $
+# $Id: pmd_grapher.plx 6570 2006-06-27 15:01:04Z timbo $
 
 use strict;
 use Getopt::Std;
@@ -23,7 +23,7 @@ use vars qw/$VERSION $IMGFILE
 getopts('hto:m:n:s:rbf:');
 if ($opt_h) { usage(); }
 
-$VERSION = (q$Revision: 6562 $) =~ /(\d+)/g;
+$VERSION = (q$Revision: 6570 $ =~ /(\d+)/g)[0];
 
 $IMGFILE = shift || usage();
 
@@ -193,7 +193,7 @@ to give parent and/or child relationships.
 
 =head1 VERSION
 
-$Id: pmd_grapher.plx,v 1.11 2002/07/07 00:28:00 piers Exp $
+$Id: pmd_grapher.plx 6570 2006-06-27 15:01:04Z timbo $
 
 =cut
 
