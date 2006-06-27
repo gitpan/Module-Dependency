@@ -4,120 +4,122 @@ use Storable qw/retrieve/;
 use vars qw/$VERSION $UNIFIED $unified_file $LOADED/;
 use constant MAX_DEPTH => 1000;
 
-($VERSION) = ('$Revision: 1.9 $' =~ /([\d\.]+)/ );
+$VERSION      = (q$Revision: 6562 $) =~ /(\d+)/g;
 $unified_file = '/var/tmp/dependence/unified.dat';
 
 sub setIndex {
-	my $file = shift;
-	TRACE("Trying to set index to <$file>");
-	return unless $file;
-	$unified_file = $file;
-	$LOADED = 0;
-	return 1;
+    my $file = shift;
+    TRACE("Trying to set index to <$file>");
+    return unless $file;
+    $unified_file = $file;
+    $LOADED       = 0;
+    return 1;
 }
 
 sub retrieveIndex {
-	TRACE("retrieving index");
-	$UNIFIED = retrieve( $unified_file ) || return(undef);
-	$LOADED = 1;
-	return $UNIFIED;
+    TRACE("retrieving index");
+    $UNIFIED = retrieve($unified_file) || return (undef);
+    $LOADED = 1;
+    return $UNIFIED;
 }
 
 sub allItems {
-	my $force = shift;
-	if (! $LOADED || $force) { retrieveIndex(); }
-	return [ keys %{$UNIFIED->{'allobjects'}} ];
+    my $force = shift;
+    if ( !$LOADED || $force ) { retrieveIndex(); }
+    return [ keys %{ $UNIFIED->{'allobjects'} } ];
 }
 
 sub allScripts {
-	my $force = shift;
-	if (! $LOADED || $force) { retrieveIndex(); }
-	return $UNIFIED->{'scripts'};
+    my $force = shift;
+    if ( !$LOADED || $force ) { retrieveIndex(); }
+    return $UNIFIED->{'scripts'};
 }
 
 sub getItem {
-	my ($packname, $force) = @_;
-	if (! $LOADED || $force) { retrieveIndex(); }
-	TRACE("Getting record for <$packname>");
-	if (exists $UNIFIED->{'allobjects'}->{$packname}) {
-		return $UNIFIED->{'allobjects'}->{$packname};
-	} else {
-		return undef;
-	}
+    my ( $packname, $force ) = @_;
+    if ( !$LOADED || $force ) { retrieveIndex(); }
+    TRACE("Getting record for <$packname>");
+    if ( exists $UNIFIED->{'allobjects'}->{$packname} ) {
+        return $UNIFIED->{'allobjects'}->{$packname};
+    }
+    else {
+        return undef;
+    }
 }
 
 sub getFilename {
-	my $obj = getItem( @_ ) || return(undef);
-	return $obj->{'filename'};
+    my $obj = getItem(@_) || return (undef);
+    return $obj->{'filename'};
 }
 
 sub getChildren {
-	my $obj = getItem( @_ ) || return(undef);
-	return $obj->{'depends_on'};
+    my $obj = getItem(@_) || return (undef);
+    return $obj->{'depends_on'};
 }
 
 sub getParents {
-	my $obj = getItem( @_ ) || return(undef);
-	return $obj->{'depended_upon_by'};
+    my $obj = getItem(@_) || return (undef);
+    return $obj->{'depended_upon_by'};
 }
 
 sub dropIndex {
-	$LOADED = 0;
-	undef $UNIFIED;
-	return 1;
+    $LOADED = 0;
+    undef $UNIFIED;
+    return 1;
 }
 
 sub relationship {
-	my ($itemName, $otherItem) = @_;
-	TRACE("relationship for $itemName / $otherItem");
-	my $obj = getItem( $itemName ) || return(undef);
-	
-	my ($isParent, $isChild) = ( _isParent($itemName, $otherItem, {}, 0), _isChild($itemName, $otherItem, {}, 0) );
-	
-	my $rel;
-	if ($isParent && $isChild) { $rel = 'CIRCULAR'; }
-	elsif ($isParent) { $rel = 'PARENT'; }
-	elsif ($isChild) { $rel = 'CHILD'; }
-	else { $rel = 'NONE'; }
-	
-	return $rel;
+    my ( $itemName, $otherItem ) = @_;
+    TRACE("relationship for $itemName / $otherItem");
+    my $obj = getItem($itemName) || return (undef);
+
+    my ( $isParent, $isChild ) =
+        ( _isParent( $itemName, $otherItem, {}, 0 ), _isChild( $itemName, $otherItem, {}, 0 ) );
+
+    my $rel;
+    if ( $isParent && $isChild ) { $rel = 'CIRCULAR'; }
+    elsif ($isParent) { $rel = 'PARENT'; }
+    elsif ($isChild)  { $rel = 'CHILD'; }
+    else { $rel = 'NONE'; }
+
+    return $rel;
 }
 
 ### PRIVATE
 
 sub _isParent {
-	my ($itemName, $otherItem, $seen, $depth) = @_;
-	TRACE("_isParent for $itemName / $otherItem");
-	return 0 if $seen->{$itemName}++;
-	my $parents = getParents( $itemName );
-	foreach ( @$parents ) {
-		return 1 if ($_ eq $otherItem);
-	}
-	TRACE("...not directly, recursing");
-	foreach ( @$parents ) {
-		die "Deep recursion detected" if ($depth > MAX_DEPTH);
-		return 1 if _isParent($_, $otherItem, $seen, $depth++);
-	}
-	return 0;
+    my ( $itemName, $otherItem, $seen, $depth ) = @_;
+    TRACE("_isParent for $itemName / $otherItem");
+    return 0 if $seen->{$itemName}++;
+    my $parents = getParents($itemName);
+    foreach (@$parents) {
+        return 1 if ( $_ eq $otherItem );
+    }
+    TRACE("...not directly, recursing");
+    foreach (@$parents) {
+        die "Deep recursion detected" if ( $depth > MAX_DEPTH );
+        return 1 if _isParent( $_, $otherItem, $seen, $depth++ );
+    }
+    return 0;
 }
 
 sub _isChild {
-	my ($itemName, $otherItem, $seen, $depth) = @_;
-	TRACE("_isChild for $itemName / $otherItem");
-	return 0 if $seen->{$itemName}++;
-	my $children = getChildren( $itemName );
-	foreach ( @$children ) {
-		return 1 if ($_ eq $otherItem);
-	}
-	TRACE("...not directly, recursing");
-	foreach ( @$children ) {
-		die "Deep recursion detected" if ($depth > MAX_DEPTH);
-		return 1 if _isChild($_, $otherItem, $seen, $depth++);
-	}
-	return 0;
+    my ( $itemName, $otherItem, $seen, $depth ) = @_;
+    TRACE("_isChild for $itemName / $otherItem");
+    return 0 if $seen->{$itemName}++;
+    my $children = getChildren($itemName);
+    foreach (@$children) {
+        return 1 if ( $_ eq $otherItem );
+    }
+    TRACE("...not directly, recursing");
+    foreach (@$children) {
+        die "Deep recursion detected" if ( $depth > MAX_DEPTH );
+        return 1 if _isChild( $_, $otherItem, $seen, $depth++ );
+    }
+    return 0;
 }
 
-sub TRACE {}
+sub TRACE { }
 
 =head1 NAME
 

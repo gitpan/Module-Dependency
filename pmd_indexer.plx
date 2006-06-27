@@ -5,43 +5,42 @@ use strict;
 use Getopt::Std;
 use Module::Dependency::Indexer;
 
-use vars qw/$VERSION
-$opt_h $opt_t $opt_b $opt_o/;
-($VERSION) = ('$Revision: 1.7 $' =~ /([\d\.]+)/ );
+use vars qw/$VERSION $opt_h $opt_t $opt_b $opt_o/;
+$VERSION = (q$Revision: 6562 $) =~ /(\d+)/g;
 
 getopts('htbo:');
-if ( $opt_h || ! scalar( @ARGV ) ) { usage(); }
+if ( $opt_h || !scalar(@ARGV) ) { usage(); }
 
 *Module::Dependency::Indexer::TRACE = \*TRACE;
 
-unless ($opt_b) { die( "Use the -b option to make the index, -h for help" ); }
+unless ($opt_b) { die("Use the -b option to make the index, -h for help"); }
 
-LOG( "Running... -o switch <$opt_o>, indexing @ARGV" );
-Module::Dependency::Indexer::setIndex( $opt_o ) if $opt_o;
-Module::Dependency::Indexer::makeIndex( @ARGV );
-LOG( "Done!" );
+LOG("Running... -o switch <$opt_o>, indexing @ARGV");
+Module::Dependency::Indexer::setIndex($opt_o) if $opt_o;
+Module::Dependency::Indexer::makeIndex(@ARGV);
+LOG("Done!");
 
 ### END OF MAIN
 
 sub usage {
-	while(<DATA>) { last if / NAME/; }
-	while(<DATA>) {
-		last if / DESCRIPTION/;
-		s/^\t//;
-		s/^=head1 //;
-		print;
-	}
-	exit;
+    while (<DATA>) { last if / NAME/; }
+    while (<DATA>) {
+        last if / DESCRIPTION/;
+        s/^\t//;
+        s/^=head1 //;
+        print;
+    }
+    exit;
 }
 
 sub TRACE {
-	return unless $opt_t;
-	LOG( @_ );
+    return unless $opt_t;
+    LOG(@_);
 }
 
 sub LOG {
-	my $msg = shift;
-	print STDERR "> $msg\n";
+    my $msg = shift;
+    print STDERR "> $msg\n";
 }
 
 __DATA__

@@ -52,6 +52,6 @@ If you want to be able to index modules that use the 'base' pragma, as in
 
 =head1 VERSION
 
-$Id: Dependency.pod,v 1.2 2002/09/25 23:06:35 piers Exp $
+$Rev: 6562 $
 
 =cut

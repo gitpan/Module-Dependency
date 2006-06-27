@@ -2,18 +2,33 @@
 
 Module::Dependency::Changes - List of significant changes to Module::Dependency
 
-=head2 Changes in Module::Dependency 1.81 (svn rev XXX),  30th May 2006
+=head2 Changes in Module::Dependency 1.82 (svn rev 6568),  27th June 2006
+
+    Stored data changes:
+    - 'filename' is now a relative file path, not absolute.
+    - the "key" name for scripts is now the relative file path not basename.
+    - new 'filerootdir' holds absolute prefix of filename.
+    - 'scripts' now holds relative file paths
+
+    Ignore ~ and .bak files.
+    Don't decend into ignored directories (.svn, .cpan etc)
+    Attempt to recognise .t test files.
+    Improve robustness of parsing.
+    Give more, and more useful, warning messages.
+    More compact output for pmd_dumper -a
+
+=head2 Changes in Module::Dependency 1.81,  30th May 2006
 
 First release under new maintainer Tim Bunce.
 
- Fixed parsing of multi-line use statements.
- Fixed parsing of unusual =cut statements.
- Fixed tests to not depend on hash order.
+    Fixed parsing of multi-line use statements.
+    Fixed parsing of unusual =cut statements.
+    Fixed tests to not depend on hash order.
 
- Renamed scripts to have a pmd_ prefix.
- Moved examples into new examples/ subdirectory.
- Moced pmd_cgidepend.plx and pmd_cgiform.html into examples.
- Unified script and module parsing code.
+    Renamed scripts to have a pmd_ prefix.
+    Moved examples into new examples/ subdirectory.
+    Moced pmd_cgidepend.plx and pmd_cgiform.html into examples.
+    Unified script and module parsing code.
 
 =head2 Changes prior to version 1.81
 

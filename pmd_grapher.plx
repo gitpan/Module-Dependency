@@ -14,109 +14,133 @@ use Data::Dumper;
 use constant DEFAULT_FORMAT => 'PNG';
 
 use vars qw/$VERSION $IMGFILE
-$opt_h $opt_t $opt_o $opt_s $opt_r $opt_b $opt_f $opt_m $opt_n
-$kind
-/;
+    $opt_h $opt_t $opt_o $opt_s $opt_r $opt_b $opt_f $opt_m $opt_n
+    $kind
+    /;
 
 *Module::Dependency::Grapher::TRACE = \*TRACE;
 
 getopts('hto:m:n:s:rbf:');
 if ($opt_h) { usage(); }
 
-($VERSION) = ('$Revision: 1.11 $' =~ /([\d\.]+)/ );
+$VERSION = (q$Revision: 6562 $) =~ /(\d+)/g;
+
 $IMGFILE = shift || usage();
 
-Module::Dependency::Grapher::setIndex( $opt_o ) if $opt_o;
+Module::Dependency::Grapher::setIndex($opt_o) if $opt_o;
 
 # what modules/scripts will be included
 my $objlist;
 my $title;
 $kind = 'child';
-if ( $opt_s ) {
-	TRACE( "Trying to start tree with $opt_s" );
-	
-	my $plural = '';
-	if (index($opt_s, ',') > -1) {
-		$objlist = [ split(/,\s*/, $opt_s) ];
-		$plural = 's';
-	} else {
-		$objlist = [ $opt_s ];
-	}
+if ($opt_s) {
+    TRACE("Trying to start tree with $opt_s");
 
-	if ($opt_b) {
-		$kind = 'both';
-		$title = "Parent & child dependencies for package$plural $opt_s";
-	} elsif ($opt_r) {
-		$kind = 'parent';
-		$title = "Parent dependencies for package$plural $opt_s";
-	} else {
-		$title = "Dependencies for package$plural $opt_s";
-	}
-} else {
-	TRACE( "Trying to start tree with all scripts" );
-	$title = 'Dependencies for all scripts';
-	$objlist = Module::Dependency::Info::allScripts();
+    my $plural = '';
+    if ( index( $opt_s, ',' ) > -1 ) {
+        $objlist = [ split( /,\s*/, $opt_s ) ];
+        $plural = 's';
+    }
+    else {
+        $objlist = [$opt_s];
+    }
+
+    if ($opt_b) {
+        $kind  = 'both';
+        $title = "Parent & child dependencies for package$plural $opt_s";
+    }
+    elsif ($opt_r) {
+        $kind  = 'parent';
+        $title = "Parent dependencies for package$plural $opt_s";
+    }
+    else {
+        $title = "Dependencies for package$plural $opt_s";
+    }
+}
+else {
+    TRACE("Trying to start tree with all scripts");
+    $title   = 'Dependencies for all scripts';
+    $objlist = Module::Dependency::Info::allScripts();
 }
 
 # deduce format
 my $format;
 if ($opt_f) {
-	$format = uc($opt_f);
-} else {
-	if ($IMGFILE =~ /\.gif$/i) {
-		$format = 'GIF';
-	} elsif ($IMGFILE =~ /\.png$/i) {
-		$format = 'PNG';
-	} elsif ($IMGFILE =~ /\.ps$/i) {
-		$format = 'PS';
-	} elsif ($IMGFILE =~ /\.eps$/i) {
-		$format = 'EPS';
-	} elsif ($IMGFILE =~ /\.txt$/i) {
-		$format = 'TEXT';
-	} elsif ($IMGFILE =~ /\.svg$/i) {
-		$format = 'SVG';
-	} elsif ($IMGFILE =~ /\.s?html?$/i) {
-		$format = 'HTML';
-	} else {
-		$format = DEFAULT_FORMAT;
-	}
+    $format = uc($opt_f);
+}
+else {
+    if ( $IMGFILE =~ /\.gif$/i ) {
+        $format = 'GIF';
+    }
+    elsif ( $IMGFILE =~ /\.png$/i ) {
+        $format = 'PNG';
+    }
+    elsif ( $IMGFILE =~ /\.ps$/i ) {
+        $format = 'PS';
+    }
+    elsif ( $IMGFILE =~ /\.eps$/i ) {
+        $format = 'EPS';
+    }
+    elsif ( $IMGFILE =~ /\.txt$/i ) {
+        $format = 'TEXT';
+    }
+    elsif ( $IMGFILE =~ /\.svg$/i ) {
+        $format = 'SVG';
+    }
+    elsif ( $IMGFILE =~ /\.s?html?$/i ) {
+        $format = 'HTML';
+    }
+    else {
+        $format = DEFAULT_FORMAT;
+    }
 }
 
-TRACE( "Format deduced to be $format" );
+TRACE("Format deduced to be $format");
 
 if ( $format eq 'TEXT' ) {
-	Module::Dependency::Grapher::makeText( $kind, $objlist, $IMGFILE, {Title => $title, IncludeRegex => $opt_m, ExcludeRegex => $opt_n});
-} elsif ( $format eq 'HTML' ) {
-	Module::Dependency::Grapher::makeHtml( $kind, $objlist, $IMGFILE, {Title => $title, IncludeRegex => $opt_m, ExcludeRegex => $opt_n});
-} elsif ( $format eq 'SVG' ) {
-	Module::Dependency::Grapher::makeSvg( $kind, $objlist, $IMGFILE, {Title => $title, IncludeRegex => $opt_m, ExcludeRegex => $opt_n});
-} elsif ( $format eq 'PS' ) {
-	Module::Dependency::Grapher::makePs( $kind, $objlist, $IMGFILE, {Title => $title, Format => 'PS', IncludeRegex => $opt_m, ExcludeRegex => $opt_n});
-} elsif ( $format eq 'EPS' ) {
-	Module::Dependency::Grapher::makePs( $kind, $objlist, $IMGFILE, {Title => $title, IncludeRegex => $opt_m, ExcludeRegex => $opt_n});
-} else {
-	Module::Dependency::Grapher::makeImage( $kind, $objlist, $IMGFILE, {Title => $title, Format => $format, IncludeRegex => $opt_m, ExcludeRegex => $opt_n} );
+    Module::Dependency::Grapher::makeText( $kind, $objlist, $IMGFILE,
+        { Title => $title, IncludeRegex => $opt_m, ExcludeRegex => $opt_n } );
+}
+elsif ( $format eq 'HTML' ) {
+    Module::Dependency::Grapher::makeHtml( $kind, $objlist, $IMGFILE,
+        { Title => $title, IncludeRegex => $opt_m, ExcludeRegex => $opt_n } );
+}
+elsif ( $format eq 'SVG' ) {
+    Module::Dependency::Grapher::makeSvg( $kind, $objlist, $IMGFILE,
+        { Title => $title, IncludeRegex => $opt_m, ExcludeRegex => $opt_n } );
+}
+elsif ( $format eq 'PS' ) {
+    Module::Dependency::Grapher::makePs( $kind, $objlist, $IMGFILE,
+        { Title => $title, Format => 'PS', IncludeRegex => $opt_m, ExcludeRegex => $opt_n } );
+}
+elsif ( $format eq 'EPS' ) {
+    Module::Dependency::Grapher::makePs( $kind, $objlist, $IMGFILE,
+        { Title => $title, IncludeRegex => $opt_m, ExcludeRegex => $opt_n } );
+}
+else {
+    Module::Dependency::Grapher::makeImage( $kind, $objlist, $IMGFILE,
+        { Title => $title, Format => $format, IncludeRegex => $opt_m, ExcludeRegex => $opt_n } );
 }
 
-TRACE( "Done!" );
+TRACE("Done!");
 
 ### END OF MAIN
 
 sub usage {
-	while(<DATA>) { last if / NAME/; }
-	while(<DATA>) {
-		last if / DESCRIPTION/;
-		s/^\t//;
-		s/^=head1 //;
-		print;
-	}
-	exit;
+    while (<DATA>) { last if / NAME/; }
+    while (<DATA>) {
+        last if / DESCRIPTION/;
+        s/^\t//;
+        s/^=head1 //;
+        print;
+    }
+    exit;
 }
 
 sub TRACE {
-	return unless $opt_t;
-	my $msg = shift;
-	print STDERR "> $msg\n";
+    return unless $opt_t;
+    my $msg = shift;
+    print STDERR "> $msg\n";
 }
 
 __DATA__

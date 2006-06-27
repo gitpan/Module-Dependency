@@ -1,13 +1,19 @@
 package Module::Dependency::Indexer;
+
 use strict;
+
+use Cwd;
 use File::Find;
 use File::Spec;
+use File::Basename;
 use Storable qw/nstore/;
+
 use vars qw/$VERSION $UNIFIED @NOINDEX $unified_file $check_shebang/;
 
-($VERSION) = ('$Revision: 1.14 $' =~ /([\d\.]+)/ );
-@NOINDEX = qw(.AppleDouble /test);
-my %ignore_file_names = map { $_=>1 } qw(
+$VERSION = (q$Revision: 6568 $) =~ /(\d+)/g;
+
+@NOINDEX = qw(.AppleDouble);
+my %ignore_names = map { $_ => 1 } qw(
     CVS
     .svn
     .cpan
@@ -16,26 +22,38 @@ $check_shebang = 1;
 
 $unified_file = '/var/tmp/dependence/unified.dat';
 
+our $index_dir;
+
 sub setIndex {
-	my $file = _makeAbsolute( shift );
-	TRACE("Trying to set index to <$file>");
-	return unless $file;
-	$unified_file = $file;
+    my $file = _makeAbsolute(shift);
+    TRACE("Trying to set index to <$file>");
+    return unless $file;
+    $unified_file = $file;
 }
 
 sub makeIndex {
-	my @dirs = map { _makeAbsolute( $_ ) } @_;
-	
-	TRACE( "Running search to build indexes" );
-	$UNIFIED = {};
-	File::Find::find( \&_wanted, @dirs );
-	_reverseDepend();
-	_storeIndex();
-	return 1;
+    my @dirs = map { _makeAbsolute($_) } @_;
+
+    TRACE("Running search to build indexes on @dirs");
+    $UNIFIED = {};
+    my $find_options = {
+        wanted => \&_wanted,
+        no_chdir => 1,
+    };
+    my $cwd = getcwd();
+    for $index_dir (@dirs) {
+        chdir $index_dir or die "Can't chdir $index_dir: $!";
+        TRACE("Indexing directory $index_dir");
+        File::Find::find( $find_options, $index_dir);
+    }
+    chdir $cwd or die "Can't return to $cwd dir: $!";
+    _reverseDepend();
+    _storeIndex();
+    return 1;
 }
 
 sub setShebangCheck {
-	$check_shebang = shift;
+    $check_shebang = shift;
 }
 
 ######### PRIVATE
@@ -43,181 +61,243 @@ sub setShebangCheck {
 # if we get given relative pathnames then things stop working when File::Find changes working directory
 # the fix is now to ensure we use absolute paths internally.
 sub _makeAbsolute {
-	my $dir = $_[0];
-	if ( File::Spec->file_name_is_absolute( $dir ) ) {
-		TRACE("$dir is an absolute path");
-		return $dir;
-	} else {
-		my $abs = File::Spec->rel2abs( $dir );
-		TRACE("$dir is relative - changed to $abs");
-		return $abs
-	}
+    my $dir = $_[0];
+    if ( File::Spec->file_name_is_absolute($dir) ) {
+        TRACE("$dir is an absolute path");
+        return $dir;
+    }
+    else {
+        my $abs = File::Spec->rel2abs($dir);
+        TRACE("$dir is relative - changed to $abs");
+        return $abs;
+    }
 }
 
 sub _storeIndex {
-	TRACE( "storing to disk" );
-	
-	my $CACHEDIR = $unified_file;
-	if ( index( $CACHEDIR, '/' ) > -1 ) {
-		$CACHEDIR =~ s|^(.*)/.*$|$1|;
-		unless (-d $CACHEDIR) {
-			LOG( "making data directory $CACHEDIR" );
-			umask(0000);
-			mkdir($CACHEDIR, 0777) or die("Can't make data directory <$CACHEDIR> because: $!");
-		}
-	}
+    TRACE("storing to disk");
 
-	nstore( $UNIFIED, $unified_file ) or die("Problem with nstore! $!");
+    my $CACHEDIR = $unified_file;
+    if ( index( $CACHEDIR, '/' ) > -1 ) {
+        $CACHEDIR =~ s|^(.*)/.*$|$1|;
+        unless ( -d $CACHEDIR ) {
+            LOG("making data directory $CACHEDIR");
+            umask(0000);
+            mkdir( $CACHEDIR, 0777 ) or die("Can't make data directory <$CACHEDIR> because: $!");
+        }
+    }
+
+    nstore( $UNIFIED, $unified_file ) or die("Problem with nstore! $!");
 }
 
 # work out and install reverse dependencies
 sub _reverseDepend {
-	foreach my $Obj ( values( %{$UNIFIED->{'allobjects'}} ) ) {
-		my $item = $Obj->{'package'};
-		TRACE( "Resolving dependencies for $item" );
-		
-		# iterate over dependencies...
-		foreach my $dep ( @{$Obj->{'depends_on'}} ) {
-			if (exists $UNIFIED->{'allobjects'}->{ $dep }) {
-				# put reverse dependencies into packages
-				TRACE( "Installing reverse dependency in $dep" );
-				push( @{$UNIFIED->{'allobjects'}->{ $dep }->{'depended_upon_by'}}, $item );
-			}
-		}
-	}
+    foreach my $Obj ( values( %{ $UNIFIED->{'allobjects'} } ) ) {
+        my $item = $Obj->{'package'};
+        TRACE("Resolving dependencies for $item");
+
+        # iterate over dependencies...
+        foreach my $dep ( @{ $Obj->{'depends_on'} } ) {
+            if ( exists $UNIFIED->{'allobjects'}->{$dep} ) {
+
+                # put reverse dependencies into packages
+                TRACE("Installing reverse dependency in $dep");
+                push( @{ $UNIFIED->{'allobjects'}->{$dep}->{'depended_upon_by'} }, $item );
+            }
+        }
+    }
 }
 
 sub _wanted {
-	local $_ = $_;
-	my $fname = $File::Find::name;
-	
-        if ($ignore_file_names{$_}) {
-            TRACE("Rejecting $fname");
-            return;
-        }
-	foreach (@NOINDEX) {
-            if (index($fname, $_) > -1) {
-                TRACE("Rejecting $fname");
-                return;
-            }
-	}
-	
-	TRACE("Indexing $fname");
-	my $is_perl_script = 0;
-	if (m/\.pm$/) {
-		my $moduleObj = _parseModule( $fname ) || return;
-		$UNIFIED->{'allobjects'}->{ $moduleObj->{'package'} } = $moduleObj;
-	} elsif (m/\.plx?$/) {
-		$is_perl_script++;
-	} elsif ($check_shebang && -f $fname && open(F, "<$fname")) {
-		my $first_line = <F> || '';
-		close F;
-		if ($first_line =~ /^#!.*perl/) {
-			$is_perl_script++;
-		}
-	} else {
-		return;
-	}
+    my $fname = $File::Find::name;
+    # strip off the start directory to give a relative path
+    $fname =~ s/^\Q$index_dir\E\/?//;
 
-	if ($is_perl_script) {
- 		my $scriptObj = _parseScript( $fname ) || return;
- 		push( @{$UNIFIED->{'scripts'}} , $scriptObj->{'package'} );
- 		$UNIFIED->{'allobjects'}->{ $scriptObj->{'package'} } = $scriptObj;
- 	}
+    my ($name, $path, $suffix) = fileparse($fname, qr{\..*});
+    local $_ = "$name$suffix";
+
+    if ( $ignore_names{$_} ) {
+        TRACE("Ignoring $_ ($fname)");
+        $File::Find::prune = 1;
+        return;
+    }
+    # XXX generalize into a compiled regex from patterns defined at start/externally
+    if (m/(\~|\.bak)$/) {
+        TRACE("Ignoring $_ ($fname)");
+        return;
+    }
+
+    # ignore anything that's not a plain file
+    return unless -f $fname;
+
+    my $is = '';
+    if (m/\.pm$/) {
+        $is = 'module';
+    }
+    elsif (m/\.plx?$/) {
+        $is = 'script';
+    }
+    elsif ( $check_shebang && -s $fname ) {
+        if ( open( F, "<$fname" ) ) {
+            my $first_line = <F> || '';
+            close F;
+            $is = 'script' if $first_line =~ /^#!.*perl/;
+            # XXX temp hack to pick up most test script - needs something better
+            $is = 'script' if m/\.t$/ && $first_line =~ /^\s*(use\s+|#|package|$)/;
+        }
+        else {
+            warn "Can't open $fname: $!\n";
+        }
+    }
+
+    if ($is eq 'script') {
+        TRACE("script  $fname");
+        my $scriptObj = _parseScript($fname, $index_dir) || return;
+        my $file = $scriptObj->{'package'};
+        push @{ $UNIFIED->{'scripts'} }, $file;
+        if (my $prev = $UNIFIED->{'allobjects'}->{ $file }) {
+            my $cmp = files_indentical($prev->{filename},$fname) ? ", files differ" : ", files indentical";
+            warn "Filename $file seen multiple times ($prev->{filename} and $fname$cmp)\n";
+        }
+        $UNIFIED->{'allobjects'}->{ $file } = $scriptObj;
+    }
+    elsif ($is eq 'module') {
+        TRACE("module  $fname");
+        my $moduleObj = _parseModule($fname, $index_dir) || return;
+        my $package = $moduleObj->{'package'};
+        if (my $prev = $UNIFIED->{'allobjects'}->{ $package }) {
+            my $cmp = files_indentical($prev->{filename}, $fname) ? ", files identical" : ", files differ";
+            warn "Package $package seen multiple times ($prev->{filename} and $fname$cmp)\n";
+        }
+        $UNIFIED->{'allobjects'}->{ $package } = $moduleObj;
+    }
+    else {
+        TRACE("ignored $fname");
+    }
 }
+
+
+sub files_indentical {
+    my ($f1, $f2) = @_;
+    return 1 if $f1 eq $f2;
+    return 0 if -s $f1 != -s $f2;
+    return system('cmp', '-s', $f1, $f2) == 0;
+}
+
 
 # Get data from a module file, returns a dependency unit object
 sub _parseFile {
-	my $file = shift;
+    my ($file, $rootdir) = @_;
 
-	my $self = {
-		'filename' => $file,
-		'depends_on' => [],
-		'depended_upon_by' => [],
-	};
-	
-	my %seen;
-	
-	# go through the file and try to find out some things
-	local *FILE;
-	open(FILE, $file) or do { warn("Can't open file $file for read: $!"); return undef; };
-	
-	my $in_pod;
-	while(<FILE>) {
-		if ($in_pod) {
-			$in_pod = 0 if /^=cut/;
-			next;
-		}
+    my $self = {
+        'filename'         => $file,
+        'filerootdir'      => $rootdir,
+        'depends_on'       => [],
+        'depended_upon_by' => [],
+    };
 
-		# get the package name
-		if (m/^\s*package\s+([\w\:]+)\s*;/) {
-                        # only record the first package seen
-			$self->{'package'} = $1 unless exists $self->{'package'};
-		}
-		# get the dependencies
-		if (m/^\s*use\s+([\w\:]+)/) {
-			push (@{$self->{'depends_on'}}, $1) unless ($seen{$1}++);
-		}
-		# get the dependencies - XXX doesn't deal with require "Foo/Bar.pm"
-		if (m/^\s*require\s+([\w\:]+)/) {
-			push (@{$self->{'depends_on'}}, $1) unless ($seen{$1}++);
-		}
-		
-		# the 'base' pragma - SREZIC
-		if (m/^\s*use\s+base\s+(.*)/) {
-			require Safe;
-			my $safe = new Safe;
-			(my $list = $1) =~ s/\s+\#.*//;
-			$list =~ s/[\r\n]//;
-			while ($list !~ /;\s*$/ && ($_ = <FILE>)) {
-				s/\s+#.*//;
-				s/[\r\n]//;
-				$list .= $_;
-			}
-			$list =~ s/;\s*$//;
-			my(@mods) = $safe->reval($list);
-			foreach my $mod (@mods) {
-				push (@{$self->{'depends_on'}}, $mod) unless ($seen{$mod}++);
-			}
-		}
+    my %seen;
 
-		$in_pod = 1 if m/^=\w+/ && !m/^=cut/;
-		last if m/^\s*__(END|DATA)__/;
-	}
-	close FILE;
-	
-	return $self;
+    # go through the file and try to find out some things
+    local *FILE;
+    open( FILE, $file ) or do { warn("Can't open file $file for read: $!"); return undef; };
+
+    my $in_pod;
+    while (<FILE>) {
+        s/\r?\n$//;
+        if ($in_pod) {
+            $in_pod = 0 if /^=cut/;
+            next;
+        }
+
+        # get the package name
+        if (m/^\s*package\s+([\w\:]+)\s*;/) {
+            # XXX currently only record the first package seen
+            if (exists $self->{'package'}) {
+                warn "Can only index one package per file currently, ignoring $1 at line $. in $file\n";
+                next;
+            }
+            $self->{'package'} = $1;
+        }
+
+        # get the dependencies
+        if (m/^\s*use\s+([\w\:]+)/) {
+            push( @{ $self->{'depends_on'} }, $1 ) unless ( $seen{$1}++ );
+        }
+
+        # get the dependencies
+        if (m/^\s*require\s+([^\s;]+)/) { # "require Bar;" or "require 'Foo/Bar.pm' if $wibble;'
+            my $required = $1;
+            if ($required =~ m/^([\w\:]+)$/) {
+                push @{ $self->{'depends_on'} }, $required unless $seen{$required}++;
+            }
+            elsif ($required =~ m/^["'](.*?\.pm)["']$/) { # simple Foo/Bar.pm case
+                ($required = $1) =~ s/\.pm$//;
+                $required =~ s!/!::!g;
+                push @{ $self->{'depends_on'} }, $required unless $seen{$required}++;
+            }
+            else {
+                warn "Can't interpret $_ at line $. in $file\n"
+                        unless m!sys/syscall.ph!
+                            or m!dumpvar.pl!
+                            or $required =~ /^5\./;
+            }
+        }
+
+        # the 'base' pragma - SREZIC
+        if (m/^\s*use\s+base\s+(.*)/) {
+            require Safe;
+            my $safe = new Safe;
+            ( my $list = $1 ) =~ s/\s+\#.*//;
+            $list =~ s/[\r\n]//;
+            while ( $list !~ /;\s*$/ && ( $_ = <FILE> ) ) {
+                s/\s+#.*//;
+                s/[\r\n]//;
+                $list .= $_;
+            }
+            $list =~ s/;\s*$//;
+            my (@mods) = $safe->reval($list);
+            warn "Unable to eval $_ at line $. in $file: $@\n" if $@;
+            foreach my $mod (@mods) {
+                push( @{ $self->{'depends_on'} }, $mod ) unless ( $seen{$mod}++ );
+            }
+        }
+
+        $in_pod = 1 if m/^=\w+/ && !m/^=cut/;
+        last if m/^\s*__(END|DATA)__/;
+    }
+    close FILE;
+
+    return $self;
 }
 
 # Get data from a module file, returns a dependency unit object
 sub _parseModule {
-	my $file = shift;
-	my $self = _parseFile($file)
-            or return;
-        if (!$self->{'package'}) {
-            warn "No package found in $file\n";
-            return undef;
-	}
-        return $self;
+    my ($file, $rootdir) = @_;
+    my $self = _parseFile($file, $rootdir)
+        or return;
+    if ( !$self->{'package'} ) {
+        warn "No package found in $file\n";
+        return undef;
+    }
+    return $self;
 }
 
 # Get data from a program file, returns a dependency unit object
 sub _parseScript {
-	my $file = shift;
-	my $self = _parseFile($file)
-            or return;
+    my ($file, $rootdir) = @_;
+    my $self = _parseFile($file, $rootdir)
+        or return;
 
-        # XXX force package for script file to be the filename (without directory)
-	(undef, undef, my $filename) = File::Spec->splitpath( $file );
-        warn "$file contains package $self->{'package'} but we ignore it"
-                if $self->{'package'};
-	$self->{'package'} = $filename;
+    # XXX force package for script file to be the filename
+    warn "Ignored package ($self->{'package'}) within script $file\n"
+        if $self->{'package'} && $self->{'package'} ne 'main';
+    $self->{'package'} = $file;
 
-	return $self;
+    return $self;
 }
 
-sub TRACE {}
-sub LOG {}
+sub TRACE { }
+sub LOG   { }
 
 1;
 
