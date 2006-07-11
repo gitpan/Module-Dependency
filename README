@@ -105,7 +105,7 @@ pmd_indexer.plx
 Creates a database file holding dependency information for the source files in
 one or more directories. 
 
-pmd_dumper.plx
+pmd_dump.pl
 --------------
 
 Extracts information from the database and displays it on standard output.
@@ -158,5 +158,15 @@ Module::Dependency::Info
 
 This module is used as the interface to query the database and get 
 information out.
+
+=head1 TODO
+
+ - make items be real objects with methods etc
+ - use overloading to stringify as key
+ - move some pmd_dump.pl subs into object methods
+
+ - abstract the Module::Dependency::Indexer more
+
+ - Look at using Graph::Easy
 
 =cut

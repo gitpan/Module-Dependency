@@ -10,11 +10,11 @@ WriteMakefile(
         PREOP => '$(MAKE) -f Makefile.old distdir',
         COMPRESS => 'gzip -v9', SUFFIX => 'gz',
     },
-    VERSION 	=> '1.83',
+    VERSION 	=> '1.84',
     PREREQ_PM	=> {
         Storable => 0,
         File::Find => 0,
         File::Spec => 0,
     },
-    EXE_FILES	=> [ qw(pmd_dumper.plx  pmd_grapher.plx  pmd_indexer.plx) ],
+    EXE_FILES	=> [ qw(pmd_dump.pl  pmd_grapher.plx  pmd_indexer.plx) ],
 );

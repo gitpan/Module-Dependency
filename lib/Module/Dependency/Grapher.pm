@@ -7,7 +7,7 @@ use vars qw/$VERSION @TIERS %LOOKUP %COLOURS
     $nOffset $eOffset $sOffset $wOffset
     /;
 
-$VERSION = (q$Revision: 6570 $ =~ /(\d+)/g)[0];
+$VERSION = (q$Revision: 6632 $ =~ /(\d+)/g)[0];
 
 %COLOURS = (
     type      => [ 0,   0,   0 ],
@@ -399,6 +399,7 @@ sub _makeCols {
             my $temp = [];
             foreach ( @{ $TIERS[$ptr] } ) {
                 my $obj = Module::Dependency::Info::getItem($_);
+                next unless $obj->{filename};
                 $LOOKUP{$_} = $obj;
                 $seen{$_}   = 1;
                 TRACE("...for $obj->{'package'}");
@@ -434,6 +435,7 @@ sub _makeCols {
             my $temp = [];
             foreach ( @{ $TIERS[0] } ) {
                 my $obj = Module::Dependency::Info::getItem($_);
+                next unless $obj->{filename};
                 $LOOKUP{$_} = $obj;
                 $seen{$_}   = 1;
                 TRACE("...for $obj->{'package'}");
@@ -880,7 +882,7 @@ Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Grapher.pm 6570 2006-06-27 15:01:04Z timbo $
+$Id: Grapher.pm 6632 2006-07-11 14:00:38Z timbo $
 
 =cut
 

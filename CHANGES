@@ -2,7 +2,16 @@
 
 Module::Dependency::Changes - List of significant changes to Module::Dependency
 
-=head2 Changes in Module::Dependency 1.83 (svn rev 6568),  27th June 2006
+=head2 Changes in Module::Dependency 1.84 (svn rev 6633),  11th July 2006
+
+    Replaced pmd_dumper.plx with much more flexible pmd_dump.pl
+    Unresolved dependencies now get entries in allobjects,
+        with their reverse dependencies listed so they can be queried.
+    Because of that the grapher html output changed but the tests
+        haven't yet been updated so they're skipped.
+    All entries have a 'key' field matching the key of the allobjects hash.
+
+=head2 Changes in Module::Dependency 1.83 (svn rev 6569),  27th June 2006
 
     Fixed VERSION numbers.
     Simplified README docs, INSTALL and added my name to LICENCE.

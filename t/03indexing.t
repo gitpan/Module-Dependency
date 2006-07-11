@@ -27,7 +27,7 @@ if ( -f $index ) {
 Module::Dependency::Info::setIndex( $index );
 ok( Module::Dependency::Info::retrieveIndex );
 
-is( scalar @{ Module::Dependency::Info::allItems() }, 11 );
+is( scalar @{ Module::Dependency::Info::allItems() }, 19 );
 ok( Module::Dependency::Info::allScripts()->[1] =~ m/(x.pl|y.pl|z.cgi)/ );
 
 my $i = Module::Dependency::Info::getItem('d');

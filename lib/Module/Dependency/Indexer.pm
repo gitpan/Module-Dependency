@@ -10,7 +10,7 @@ use Storable qw/nstore/;
 
 use vars qw/$VERSION $UNIFIED @NOINDEX $unified_file $check_shebang/;
 
-$VERSION = (q$Revision: 6570 $ =~ /(\d+)/g)[0];
+$VERSION = (q$Revision: 6630 $ =~ /(\d+)/g)[0];
 
 @NOINDEX = qw(.AppleDouble);
 my %ignore_names = map { $_ => 1 } qw(
@@ -97,11 +97,16 @@ sub _reverseDepend {
 
         # iterate over dependencies...
         foreach my $dep ( @{ $Obj->{'depends_on'} } ) {
-            if ( exists $UNIFIED->{'allobjects'}->{$dep} ) {
+            # XXX disabled check for existing item
+            # that way packages that are used but not indexed get an obect
+            # created for them that captures what depends on them, which is
+            # often very useful information
+            if ( 1 or exists $UNIFIED->{'allobjects'}->{$dep} ) {
 
                 # put reverse dependencies into packages
                 TRACE("Installing reverse dependency in $dep");
-                push( @{ $UNIFIED->{'allobjects'}->{$dep}->{'depended_upon_by'} }, $item );
+                my $obj = $UNIFIED->{'allobjects'}->{$dep} ||= { key => $dep };
+                push @{ $obj->{'depended_upon_by'} }, $item;
             }
         }
     }
@@ -158,6 +163,7 @@ sub _wanted {
             my $cmp = files_indentical($prev->{filename},$fname) ? ", files differ" : ", files indentical";
             warn "Filename $file seen multiple times ($prev->{filename} and $fname$cmp)\n";
         }
+        $scriptObj->{key} = $file;
         $UNIFIED->{'allobjects'}->{ $file } = $scriptObj;
     }
     elsif ($is eq 'module') {
@@ -168,6 +174,7 @@ sub _wanted {
             my $cmp = files_indentical($prev->{filename}, $fname) ? ", files identical" : ", files differ";
             warn "Package $package seen multiple times ($prev->{filename} and $fname$cmp)\n";
         }
+        $moduleObj->{key} = $package;
         $UNIFIED->{'allobjects'}->{ $package } = $moduleObj;
     }
     else {
@@ -417,7 +424,7 @@ Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Indexer.pm 6570 2006-06-27 15:01:04Z timbo $
+$Id: Indexer.pm 6630 2006-07-11 13:19:32Z timbo $
 
 =cut
 

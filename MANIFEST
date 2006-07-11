@@ -24,7 +24,7 @@ lib/Module/Dependency.pod
 lib/Module/Dependency/Grapher.pm
 lib/Module/Dependency/Indexer.pm
 lib/Module/Dependency/Info.pm
-pmd_dumper.plx
+pmd_dump.pl
 pmd_grapher.plx
 pmd_indexer.plx
 t/00base.t
