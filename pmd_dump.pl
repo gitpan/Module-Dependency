@@ -391,7 +391,7 @@ Other options:
     -A     Dump all the data using Data::Dumper
     -help  Displays this help
     -t     Displays tracing messages
-    -o=F   the location of the datafile (default is /var/tmp/dependence/unified.dat)
+    -o=F   the location of the datafile
     -r     State the relationship, if any, between item1 and item2 - both may be scripts or modules.
 
 =head1 EXAMPLE
@@ -414,8 +414,9 @@ Module::Dependency modules rely on a database of dependencies. This tool allows
 you to query the index, verify that it contains what it should contain, look up
 module dependencies, etc.
 
-The default location for the index file is /var/tmp/dependence/unified.dat but
-you can select another file using the -o option.
+The default location for the index file is $ENV{PERL_PMD_DB} or else
+/var/tmp/dependence/unified.dat but you can select another file using the -o
+option.
 
 =head1 VERSION
 

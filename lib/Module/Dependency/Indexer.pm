@@ -6,11 +6,11 @@ use Cwd;
 use File::Find;
 use File::Spec;
 use File::Basename;
-use Storable qw/nstore/;
+use Module::Dependency::Info;
 
-use vars qw/$VERSION $UNIFIED @NOINDEX $unified_file $check_shebang/;
+use vars qw/$VERSION $UNIFIED @NOINDEX $check_shebang/;
 
-$VERSION = (q$Revision: 6641 $ =~ /(\d+)/g)[0];
+$VERSION = (q$Revision: 6643 $ =~ /(\d+)/g)[0];
 
 @NOINDEX = qw(.AppleDouble);
 my %ignore_names = map { $_ => 1 } qw(
@@ -20,18 +20,18 @@ my %ignore_names = map { $_ => 1 } qw(
 );
 $check_shebang = 1;
 
-$unified_file = '/var/tmp/dependence/unified.dat';
-
 our $index_dir;
+
+sub setShebangCheck {
+    $check_shebang = shift;
+}
 
 sub setIndex {
     my $file = _makeAbsolute(shift);
-    TRACE("Trying to set index to <$file>");
-    return unless $file;
-    $unified_file = $file;
+    return Module::Dependency::Info::setIndex($file);
 }
 
-sub makeIndex {
+sub buildIndex {
     my @dirs = map { _makeAbsolute($_) } @_;
 
     TRACE("Running search to build indexes on @dirs");
@@ -50,18 +50,16 @@ sub makeIndex {
     }
     chdir $cwd or die "Can't return to $cwd dir: $!";
     _reverseDepend();
-    _storeIndex();
-    return 1;
 }
 
-sub setShebangCheck {
-    $check_shebang = shift;
+sub makeIndex {
+    buildIndex(@_);
+    Module::Dependency::Info::storeIndex($UNIFIED);
+    return 1;
 }
 
 ######### PRIVATE
 
-# if we get given relative pathnames then things stop working when File::Find changes working directory
-# the fix is now to ensure we use absolute paths internally.
 sub _makeAbsolute {
     my $dir = $_[0];
     if ( File::Spec->file_name_is_absolute($dir) ) {
@@ -73,22 +71,6 @@ sub _makeAbsolute {
         TRACE("$dir is relative - changed to $abs");
         return $abs;
     }
-}
-
-sub _storeIndex {
-    TRACE("storing to disk");
-
-    my $CACHEDIR = $unified_file;
-    if ( index( $CACHEDIR, '/' ) > -1 ) {
-        $CACHEDIR =~ s|^(.*)/.*$|$1|;
-        unless ( -d $CACHEDIR ) {
-            LOG("making data directory $CACHEDIR");
-            umask(0000);
-            mkdir( $CACHEDIR, 0777 ) or die("Can't make data directory <$CACHEDIR> because: $!");
-        }
-    }
-
-    nstore( $UNIFIED, $unified_file ) or die("Problem with nstore! $!");
 }
 
 # work out and install reverse dependencies
@@ -116,7 +98,7 @@ sub _reverseDepend {
 
 sub _wanted {
     my $fname = $File::Find::name;
-    # strip off the start directory to give a relative path
+    # strip off the current start directory (see buildIndex) to give a relative path
     $fname =~ s/^\Q$index_dir\E\/?//;
 
     my ($name, $path, $suffix) = fileparse($fname, qr{\..*});
@@ -196,7 +178,7 @@ sub warn_duplicate {
         $curr_file = "$curr_obj->{filerootdir}/$curr_file";
     }
     my $cmp = files_indentical($prev_obj->{filerootdir},$curr_file) ? "files differ" : "files indentical";
-    warn "$what seen multiple times ($prev_file superceeded by $curr_file, $cmp)\n";
+    warn "$what seen multiple times ($prev_file superseded by $curr_file, $cmp)\n";
 }
 
 sub files_indentical {
@@ -446,7 +428,7 @@ Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Indexer.pm 6641 2006-07-12 16:36:43Z timbo $
+$Id: Indexer.pm 6643 2006-07-12 20:23:31Z timbo $
 
 =cut
 

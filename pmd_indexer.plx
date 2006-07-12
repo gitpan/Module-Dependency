@@ -1,12 +1,12 @@
 #!/usr/bin/perl -w
-# $Id: pmd_indexer.plx 6570 2006-06-27 15:01:04Z timbo $
+# $Id: pmd_indexer.plx 6643 2006-07-12 20:23:31Z timbo $
 
 use strict;
 use Getopt::Std;
 use Module::Dependency::Indexer;
 
 use vars qw/$VERSION $opt_h $opt_t $opt_b $opt_o/;
-$VERSION = (q$Revision: 6570 $ =~ /(\d+)/g)[0];
+$VERSION = (q$Revision: 6643 $ =~ /(\d+)/g)[0];
 
 getopts('htbo:');
 if ( $opt_h || !scalar(@ARGV) ) { usage(); }
@@ -15,10 +15,8 @@ if ( $opt_h || !scalar(@ARGV) ) { usage(); }
 
 unless ($opt_b) { die("Use the -b option to make the index, -h for help"); }
 
-LOG("Running... -o switch <$opt_o>, indexing @ARGV");
 Module::Dependency::Indexer::setIndex($opt_o) if $opt_o;
 Module::Dependency::Indexer::makeIndex(@ARGV);
-LOG("Done!");
 
 ### END OF MAIN
 
@@ -56,8 +54,7 @@ pmd_indexer - make Module::Dependency index
 	-h Displays this help
 	-t Displays trace messages
 	-b Actually build the indexes
-	-o the location of the datafile (default is 
-	   /var/tmp/dependence/unified.dat)
+	-o the location of the datafile
 
 	Followed by a list of directories that you want to index.
 
@@ -72,12 +69,12 @@ index at every runtime is both expensive and unnecessary. This program
 uses File::Find for every named directory and looks for .pl and .pm files, which it
 then extracts dependency information from.
 
-The default location for the index file is /var/tmp/dependence/unified.dat but
-you can look in another directory using the -o option.
+The default index file is $ENV{PERL_PMD_DB} or /var/tmp/dependence/unified.dat but
+you can specify another using the -o option.
 
 =head1 VERSION
 
-$Id: pmd_indexer.plx 6570 2006-06-27 15:01:04Z timbo $
+$Id: pmd_indexer.plx 6643 2006-07-12 20:23:31Z timbo $
 
 =cut
 

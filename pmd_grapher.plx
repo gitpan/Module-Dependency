@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# $Id: pmd_grapher.plx 6570 2006-06-27 15:01:04Z timbo $
+# $Id: pmd_grapher.plx 6643 2006-07-12 20:23:31Z timbo $
 
 use strict;
 use Getopt::Std;
@@ -23,7 +23,7 @@ use vars qw/$VERSION $IMGFILE
 getopts('hto:m:n:s:rbf:');
 if ($opt_h) { usage(); }
 
-$VERSION = (q$Revision: 6570 $ =~ /(\d+)/g)[0];
+$VERSION = (q$Revision: 6643 $ =~ /(\d+)/g)[0];
 
 $IMGFILE = shift || usage();
 
@@ -164,8 +164,7 @@ pmd_grapher - display Module::Dependency info in a graphical manner
 	   'gif'/'png' - Output an image.
 	   'ps'/'eps' - Output (Encapsulated) PostScript (requires PostScript::Simple)
 	   'svg' - Scalable Vector Graphic
-	-o the location of the datafile (default is 
-	   /var/tmp/dependence/unified.dat)
+	-o the location of the datafile (default is $ENV{PERL_PMD_DB} or /var/tmp/dependence/unified.dat)
 	-m Optional regular expression - only show dependencies that match this expression
 	-n Optional regular expression - do not show dependencies that match this expression
 	-s Starts the dependency tree at this script/module
@@ -193,7 +192,7 @@ to give parent and/or child relationships.
 
 =head1 VERSION
 
-$Id: pmd_grapher.plx 6570 2006-06-27 15:01:04Z timbo $
+$Id: pmd_grapher.plx 6643 2006-07-12 20:23:31Z timbo $
 
 =cut
 

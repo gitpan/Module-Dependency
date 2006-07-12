@@ -2,6 +2,12 @@
 
 Module::Dependency::Changes - List of significant changes to Module::Dependency
 
+=head2 Changes in Module::Dependency 1.86 (svn rev 6643),  12th July 2006
+
+    No longer use umask(0) before creating dir for data file.
+    Move db file store function from Indexer.pm to Info.pm
+    Use $ENV{PERL_PMD_DB} to override location of data file.
+
 =head2 Changes in Module::Dependency 1.85 (svn rev 6642),  12th July 2006
 
     Fixed blank lines in output.

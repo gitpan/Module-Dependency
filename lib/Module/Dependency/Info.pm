@@ -1,18 +1,25 @@
 package Module::Dependency::Info;
+
 use strict;
-use Storable qw/retrieve/;
-use vars qw/$VERSION $UNIFIED $unified_file $LOADED/;
+
+use File::Basename;
+use Storable qw/nstore retrieve/;
+use base qw(Exporter);
+
+use vars qw/$UNIFIED $LOADED/;
+
 use constant MAX_DEPTH => 1000;
 
-$VERSION      = (q$Revision: 6570 $ =~ /(\d+)/g)[0];
-$unified_file = '/var/tmp/dependence/unified.dat';
+our $VERSION      = (q$Revision: 6643 $ =~ /(\d+)/g)[0];
+our $unified_file = $ENV{PERL_PMD_DB} || '/var/tmp/dependence/unified.dat';
 
 sub setIndex {
     my $file = shift;
     TRACE("Trying to set index to <$file>");
     return unless $file;
     $unified_file = $file;
-    $LOADED       = 0;
+    $LOADED  = 0;
+    $UNIFIED = undef;
     return 1;
 }
 
@@ -21,6 +28,16 @@ sub retrieveIndex {
     $UNIFIED = retrieve($unified_file) || return (undef);
     $LOADED = 1;
     return $UNIFIED;
+}
+
+sub storeIndex {
+    my ($data) = @_;
+    $UNIFIED = $data if $data;
+    TRACE("storing to disk");
+    my $CACHEDIR = dirname($unified_file);
+    mkdir( $CACHEDIR, 0777 ) or die("Can't make data directory $CACHEDIR: $!")
+        unless -d $CACHEDIR;
+    nstore( $UNIFIED, $unified_file ) or die("Problem with nstore writing to $unified_file! $!");
 }
 
 sub allItems {
@@ -138,10 +155,10 @@ Module::Dependency::Info - retrieve dependency information for scripts and modul
 	$listref = Module::Dependency::Info::allItems();
 	$listref = Module::Dependency::Info::allScripts();
 	
-	# note the syntax here - the name of perl scripts, but the package name of modules.
+	# note the syntax here - the path of perl scripts, but the package name of modules.
 	$dependencyInfo = Module::Dependency::Info::getItem( 'Foo::Bar' [, $forceReload ] );
 	# and
-	$dependencyInfo = Module::Dependency::Info::getItem( 'blahblah.pl' [, $forceReload ] );
+	$dependencyInfo = Module::Dependency::Info::getItem( './blahblah.pl' [, $forceReload ] );
 	
 	$filename = Module::Dependency::Info::getFilename( 'Foo::Bar' [, $forceReload ] );
 	$listref = Module::Dependency::Info::getChildren( $node [, $forceReload ] );
@@ -163,8 +180,8 @@ Although you can get at the database structure itself you should use the accesso
 
 =item setIndex( $filename );
 
-This tells the module where the database is. It doesn't affect the ...::Indexer 
-module - that has its own setIndex routine. The default is /var/tmp/dependence/unified.dat
+This tells the module where the database is.
+The default is $ENV{PERL_PMD_DB} or else /var/tmp/dependence/unified.dat
 
 =item retrieveIndex();
 
@@ -289,7 +306,7 @@ Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Info.pm 6570 2006-06-27 15:01:04Z timbo $
+$Id: Info.pm 6643 2006-07-12 20:23:31Z timbo $
 
 =cut
 
