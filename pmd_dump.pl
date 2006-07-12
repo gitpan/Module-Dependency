@@ -11,8 +11,9 @@ use Getopt::Long qw(:config no_ignore_case);
 use Module::Dependency::Info;
 
 GetOptions(
-    "o=f" => \my $opt_o,
+    "o=s" => \my $opt_o,
     "t!"  => \my $opt_t,
+    "A|All"         => \(my $opt_All),
     "P|Parents=i"   => \(my $opt_Parents=0),
     "C|Children=i"  => \(my $opt_Children=0),
     "M|Merge!"      => \(my $opt_Merge),
@@ -28,14 +29,26 @@ GetOptions(
     "help"          => sub { usage() },
     "s|sort!"       => \(my $opt_sort),
     "u|uniq!"       => \(my $opt_unique),
+    "U|Uniq!"       => \(my $opt_Unique),
     "r|rel=s"       => \(my $opt_rel),
 ) or exit 1;
+
+$opt_unique ||= $opt_Unique;
+
+$| = 1;
 
 *Module::Dependency::Info::TRACE = \*TRACE;
 
 Module::Dependency::Info::setIndex($opt_o) if $opt_o;
 
-my $allobj = Module::Dependency::Info::retrieveIndex()->{allobjects};
+my $index = Module::Dependency::Info::retrieveIndex();
+
+if ($opt_All) {
+    print Dumper($index);
+    exit 0;
+}
+
+my $allobj = $index->{allobjects};
 my @selected;
 
 # select objects, in @ARGV and key order
@@ -48,8 +61,8 @@ for my $arg (@ARGV) {
 
 die "Nothing selected by argument list @ARGV\n" unless @selected;
 
-my @parents  = uniq( map { related_objs($_, 'depended_upon_by', $opt_Parents)  } @selected );
-my @children = uniq( map { related_objs($_, 'depends_on',       $opt_Children) } @selected );
+my @parents  = uniq( map { related_objs($_, 'depends_on',       $opt_Parents)  } @selected );
+my @children = uniq( map { related_objs($_, 'depended_upon_by', $opt_Children) } @selected );
 my @all      = uniq( @parents, @selected, @children );
 
 if ($opt_Filter) {
@@ -112,8 +125,13 @@ if ($opt_rel) {
     warn "No items match -r $opt_rel\n" unless @rels;
 }
 
+my $all_relatives = {};
+
+@all = sort { (ref $a ? $a->{key} : $a) cmp (ref $b ? $b->{key} : $b) } @all if $opt_sort;
+
 for my $obj (@all) {
-    print format_obj($obj, 0, $opt_fields, $opt_parents, $opt_children, undef),"\n";
+    my $relatives = ($opt_Unique) ? $all_relatives : undef;
+    print "$_\n" for format_obj($obj, 0, $opt_fields, $opt_parents, $opt_children, $relatives);
 
     for my $rel (@rels) { # XXX untested carryover from old pmd_dumper.plx
         my $rv = Module::Dependency::Info::relationship( $obj, $rel );
@@ -141,12 +159,18 @@ exit 0;
 sub mk_selector {
     my ($expr) = @_;
     my ($field, $pattern);
+    my $not;
 
     if ($expr eq '') { # select everything
         ($field, $pattern) = ('key', qr/.*/);
     }
-    elsif ($expr =~ m/^(\w+)=~?(.*)/) {
-        ($field, $pattern) = ($1, qr/$2/);
+    elsif ($expr =~ m/^(\w+)(=~|!~)(.*)/) {
+        ($field, $pattern) = ($1, qr/$3/);
+        $not = ($2 eq '!~');
+    }
+    elsif ($expr =~ m/^(\w+)(=|!=)(.*)/) {
+        ($field, $pattern) = ($1, qr/^\Q$3\E$/);
+        $not = ($2 eq '!=');
     }
     elsif ($expr !~ /=/ && $expr =~ s/\$$//) {
         # as a convienience for selecting filenames without knowing how
@@ -165,7 +189,9 @@ sub mk_selector {
         my $v = (defined $obj->{$field}) ? $obj->{$field} : "";
         $v = join " ", @$v if ref $v eq 'ARRAY';
         $v = join " ", %$v if ref $v eq 'HASH';
-        return 1 if $v =~ /$pattern/;
+        return 1 if $not and $v !~ /$pattern/;
+        return 1 if          $v =~ /$pattern/;
+        return 0;
     };
 }
 
@@ -180,36 +206,48 @@ sub format_obj {
     $obj = $allobj->{$obj} if not ref $obj and $allobj->{$obj};
 
     my $key = (ref $obj) ? $obj->{key} : $obj;
-    return if $opt_unique and $seen->{$key};
-    $seen->{$key} = $obj;
+    warn "format_obj(@_) object has no key @{[ %$obj ]}" unless defined $key;
+    return if $opt_unique and exists $seen->{$key} and $seen->{$key} <= $indent_level;
+    $seen->{$key} = $indent_level;
 
     if (!ref $obj) {
         return "$indent$obj";
     }
 
-    my $parents = $obj->{depended_upon_by} || [];
+    my $parents = $obj->{depends_on} || [];
     if ($parent_levels && @$parents) {
-        push @str, map { format_obj($_, $indent_level+1, $fields, $parent_levels-1, 0, $seen) } @$parents;
+        my @detail = map { format_obj($_, $indent_level+1, $fields, $parent_levels-1, 0, $seen) } @$parents;
+        #warn "$indent_level $key parents: {@detail}\n";
+        push @str, @detail;
     }
 
-    for my $f (sort keys %$obj) {
-        next if $f eq 'key';
+    # XXX should be an object/class method
+    my $valid_fields = [ qw(filename filerootdir package key depends_on depended_upon_by) ];
+
+    for my $f (@$valid_fields) {
+        next if $f eq 'key' && !%$fields;
         next if %$fields && !$fields->{$f};
         my $v = $obj->{$f};
         $v = join " ", @$v if ref $v eq 'ARRAY';
         $v = join " ", %$v if ref $v eq 'HASH';
         my $header;
         $header .= $indent;
-        $header .= "$key " unless $opt_key;
-        $header .= "$f: ";
-        $header = "" if $opt_header;
+        unless ($opt_header) {
+            $header .= "$key " unless $opt_key;
+            $header .= "$f: ";
+        }
+        local $^W;
         push @str, "$header$v" unless !defined $v;
     }
 
-    my $children = $obj->{depends_on} || [];
+    my $children = $obj->{depended_upon_by} || [];
     if ($child_levels && @$children) {
-        push @str, map { format_obj($_, $indent_level+1, $fields, 0, $child_levels-1, $seen) } @$children;
+        #warn "adding children: @$children\n";
+        my @detail = map { format_obj($_, $indent_level+1, $fields, 0, $child_levels-1, $seen) } @$children;
+        #warn "$indent_level $key children {@detail}\n";
+        push @str, @detail;
     }
+    return unless @str;
     return join "\n", @str;
 }
 
@@ -219,7 +257,7 @@ sub related_objs {
     return if $depth <= 0;
     my $related = $obj->{$field};
     unless (defined $related) {
-        warn "$obj->{key} doesn't have a '$field' value\n";
+        TRACE("$obj->{key} doesn't have a '$field' value\n");
         return;
     }
     unless (ref $related eq 'ARRAY') {
@@ -237,6 +275,7 @@ sub related_objs {
 
 sub locate_module {
     my ($module) = @_;
+    return $module if $module =~ /^5\b/; # use 5.006;
     (my $filename = $module) =~ s!::!/!g;
     $filename .= ".pm";
     foreach my $prefix (@INC) {
@@ -285,9 +324,11 @@ pmd_dump.pl - Query and print Module::Dependency info
 object-patterns can be:
 
     f=S    - Select objects where field f equals string S
+    f!=S   - Select objects where field f does not equal S
     f=~R   - Select objects where field f matches regex R
+    f!~R   - Select objects where field f does not match R
     S$     - Same as filename=~S$ to match by file suffix
-    S      - Same as key=S
+    S      - Same as key=S (i.e. package or filename)
 
 For example:
 
@@ -338,7 +379,8 @@ And for each one dumped:
     -p=N   Recurse to show N levels of indented parent objects first
     -c=N   Recurse to show N levels of indented child objects after
     -i=S   Use S as the indent string (default is a tab)
-    -u     Unique - only show a child or parent once
+    -u     Unique - only show a child or parent once for a given item
+    -U     Unique - only show a child or parent once in complete output
     -k     Don't show key in header, just the fieldname
     -h     Don't show header (like grep -h), used with -f=fieldname
     -s     sort by name
@@ -346,10 +388,11 @@ And for each one dumped:
 
 Other options:
 
-    -help Displays this help
-    -t Displays tracing messages
-    -o the location of the datafile (default is /var/tmp/dependence/unified.dat)
-    -r State the relationship, if any, between item1 and item2 - both may be scripts or modules.
+    -A     Dump all the data using Data::Dumper
+    -help  Displays this help
+    -t     Displays tracing messages
+    -o=F   the location of the datafile (default is /var/tmp/dependence/unified.dat)
+    -r     State the relationship, if any, between item1 and item2 - both may be scripts or modules.
 
 =head1 EXAMPLE
 
@@ -379,5 +422,3 @@ you can select another file using the -o option.
 $Id: pmd_dump.pl 6570 2006-06-27 15:01:04Z timbo $
 
 =cut
-
-

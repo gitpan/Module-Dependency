@@ -98,7 +98,8 @@ sub cmpfile {
 	if ( index($str, $subs) > -1 ) {
 		return 1;
 	} else {
-                print "Can't find\n$subs\nin\n$str";
+                my $sep = ("-"x70)."\n";
+                print "Can't find\n$sep$subs$sep\nin\n$sep$str$sep";
 		return 0;
 	}
 }
@@ -136,7 +137,7 @@ sub HTML3 {
 
 sub TEXT {
 	return q[
- Parent> +- x.pl, y.pl
+ Parent> +- ./x.pl, ./y.pl
          |
  Parent> +- a, b, c
          |
@@ -147,7 +148,7 @@ sub TEXT {
 
 sub TEXT2 {
 	return q[
- Parent> +- x.pl, y.pl
+ Parent> +- ./x.pl, ./y.pl
          |
  Parent> +- a, b, c
          |

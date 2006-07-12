@@ -10,7 +10,7 @@ use Storable qw/nstore/;
 
 use vars qw/$VERSION $UNIFIED @NOINDEX $unified_file $check_shebang/;
 
-$VERSION = (q$Revision: 6630 $ =~ /(\d+)/g)[0];
+$VERSION = (q$Revision: 6641 $ =~ /(\d+)/g)[0];
 
 @NOINDEX = qw(.AppleDouble);
 my %ignore_names = map { $_ => 1 } qw(
@@ -38,6 +38,8 @@ sub makeIndex {
     $UNIFIED = {};
     my $find_options = {
         wanted => \&_wanted,
+        follow => 1,            # follow symbolic links
+        follow_skip => 2,       # visit everything only once
         no_chdir => 1,
     };
     my $cwd = getcwd();
@@ -155,38 +157,54 @@ sub _wanted {
     }
 
     if ($is eq 'script') {
-        TRACE("script  $fname");
-        my $scriptObj = _parseScript($fname, $index_dir) || return;
-        my $file = $scriptObj->{'package'};
-        push @{ $UNIFIED->{'scripts'} }, $file;
-        if (my $prev = $UNIFIED->{'allobjects'}->{ $file }) {
-            my $cmp = files_indentical($prev->{filename},$fname) ? ", files differ" : ", files indentical";
-            warn "Filename $file seen multiple times ($prev->{filename} and $fname$cmp)\n";
+        TRACE("script $fname");
+        my $obj = _parseScript($fname, $index_dir) || return;
+        my $key = $obj->{'filename'};
+        $obj->{key} = $key;
+
+        if (my $prev = $UNIFIED->{'allobjects'}->{ $key }) {
+            warn_duplicate($prev, $obj, "Filename $key");
         }
-        $scriptObj->{key} = $file;
-        $UNIFIED->{'allobjects'}->{ $file } = $scriptObj;
+        else {
+            push @{ $UNIFIED->{'scripts'} }, $key;
+        }
+        $UNIFIED->{'allobjects'}->{ $key } = $obj;
     }
     elsif ($is eq 'module') {
-        TRACE("module  $fname");
-        my $moduleObj = _parseModule($fname, $index_dir) || return;
-        my $package = $moduleObj->{'package'};
-        if (my $prev = $UNIFIED->{'allobjects'}->{ $package }) {
-            my $cmp = files_indentical($prev->{filename}, $fname) ? ", files identical" : ", files differ";
-            warn "Package $package seen multiple times ($prev->{filename} and $fname$cmp)\n";
+        TRACE("module $fname");
+        my $obj = _parseModule($fname, $index_dir) || return;
+        my $key = $obj->{'package'};
+        $obj->{key} = $key;
+        if (my $prev = $UNIFIED->{'allobjects'}->{ $key }) {
+            warn_duplicate($prev, $obj, "Package $key");
         }
-        $moduleObj->{key} = $package;
-        $UNIFIED->{'allobjects'}->{ $package } = $moduleObj;
+        $UNIFIED->{'allobjects'}->{ $key } = $obj;
     }
     else {
         TRACE("ignored $fname");
     }
 }
 
+sub warn_duplicate {
+    my ($prev_obj, $curr_obj, $what) = @_;
+    my $prev_file = $prev_obj->{filename};
+    my $curr_file = $curr_obj->{filename};
+    if ($prev_file eq $curr_file) {
+        # were we're indexing multiple top-level dirs (not recommended) there might
+        # be duplicate filenames found - disambiguate this case:
+        $prev_file = "$prev_obj->{filerootdir}/$prev_file";
+        $curr_file = "$curr_obj->{filerootdir}/$curr_file";
+    }
+    my $cmp = files_indentical($prev_obj->{filerootdir},$curr_file) ? "files differ" : "files indentical";
+    warn "$what seen multiple times ($prev_file superceeded by $curr_file, $cmp)\n";
+}
 
 sub files_indentical {
     my ($f1, $f2) = @_;
     return 1 if $f1 eq $f2;
-    return 0 if -s $f1 != -s $f2;
+    warn "File $f1: $!" unless defined( my $s1 = -s $f1 ); 
+    warn "File $f2: $!" unless defined( my $s2 = -s $f2 ); 
+    return 0 if $s1 != $s2;
     return system('cmp', '-s', $f1, $f2) == 0;
 }
 
@@ -194,6 +212,10 @@ sub files_indentical {
 # Get data from a module file, returns a dependency unit object
 sub _parseFile {
     my ($file, $rootdir) = @_;
+
+    # ensure key contains a slash so we can use the rule that
+    # "if it has a slash in the name then it's not a package"
+    $file = "./$file" unless $file =~ m:/:;
 
     my $self = {
         'filename'         => $file,
@@ -298,7 +320,7 @@ sub _parseScript {
     # XXX force package for script file to be the filename
     warn "Ignored package ($self->{'package'}) within script $file\n"
         if $self->{'package'} && $self->{'package'} ne 'main';
-    $self->{'package'} = $file;
+    $self->{'package'} = $self->{filename};
 
     return $self;
 }
@@ -424,7 +446,7 @@ Module::Dependency and the README files.
 
 =head1 VERSION
 
-$Id: Indexer.pm 6630 2006-07-11 13:19:32Z timbo $
+$Id: Indexer.pm 6641 2006-07-12 16:36:43Z timbo $
 
 =cut
 

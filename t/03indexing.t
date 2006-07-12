@@ -60,7 +60,7 @@ ok( Module::Dependency::Info::getChildren('f')->[0] eq 'strict');
 ok( Module::Dependency::Info::getParents('f')->[0] eq 'd');
 
 my $rv;
-$rv = Module::Dependency::Info::relationship('z.cgi', 'a');
+$rv = Module::Dependency::Info::relationship('./z.cgi', 'a');
 ok( $rv eq 'NONE');
 #print "$rv\n";
 

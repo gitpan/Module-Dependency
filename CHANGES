@@ -2,6 +2,20 @@
 
 Module::Dependency::Changes - List of significant changes to Module::Dependency
 
+=head2 Changes in Module::Dependency 1.85 (svn rev 6642),  12th July 2006
+
+    Fixed blank lines in output.
+    Fixed parent to mean what item depends_on
+        and child to mean what item is depended_on_by
+    Added sorting of final top-level output order with -sort
+    Added -Unique option (global version of -unique)
+    Added -All option to dump everything using Data::Dumper
+    Added != and !~ support to object selector patterns
+    Non-scripts always have a / in the key and filename
+        (./ is prepended if there's no / already)
+    Improved duplicate file/package warning.
+    The -h option doesn't remove indent, use -i='' for that.
+
 =head2 Changes in Module::Dependency 1.84 (svn rev 6633),  11th July 2006
 
     Replaced pmd_dumper.plx with much more flexible pmd_dump.pl
